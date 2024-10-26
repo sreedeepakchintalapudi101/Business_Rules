@@ -854,54 +854,47 @@ def rule_builder_data():
     def log_and_return(message, flag=False):
         logging.info(message)
         return jsonify({"flag": flag, "message": message})
-    
-    # Processing timing and memory usage separately
+
     def process_time_and_memory(start_time, memory_before):
         try:
             memory_after = measure_memory_usage()
             memory_consumed = (memory_after - memory_before) / (1024 * 1024 * 1024)
             end_time = tt()
-            logging.info(f"checkpoint memory_after - {memory_after}, memory_consumed - {memory_consumed:.10f}, end_time - {end_time}")
-            return f"{memory_consumed:.10f}", str(round(end_time - start_time, 3))
+            memory_consumed = f"{memory_consumed:.10f}"
+            logging.info(f"checkpoint memory_after - {memory_after}, memory_consumed - {memory_consumed}, end_time - {end_time}")
+            time_consumed = str(round(end_time - start_time, 3))
+            return memory_consumed, time_consumed
         except Exception:
             logging.warning("Failed to calculate RAM and time at the end")
             logging.exception("RAM calculation went wrong")
             return None, None
 
-    # Separating data fetch and transformation logic
-    def fetch_and_process_rule(rule_id, business_db):
+    def fetch_rule_data(rule_id, business_db):
         try:
             fetch_query = f"SELECT * FROM rule_base WHERE rule_id = '{rule_id}'"
             rule_dict = business_db.execute(fetch_query).to_dict(orient="records")
-            if rule_dict:
-                rule_data = {
-                    'rule': {
-                        'xml': rule_dict[0].pop('xml'),
-                        'javascript': rule_dict[0].pop('javascript_code'),
-                        'python': rule_dict[0].pop('python_code')
-                    },
-                    **rule_dict[0]
-                }
-                logging.info(f"Fetched rule for {rule_id}: {rule_data}")
-                return {"flag": True, "data": rule_data}
-            return {"flag": True, "data": {}}
+            return {"flag": True, "data": process_rule_data(rule_dict[0])} if rule_dict else {"flag": True, "data": {}}
         except Exception as e:
             logging.exception(e)
             return {"flag": False, "message": "Error fetching the rule from DB"}
-    
-    # Refactoring save and edit operations
-    def handle_rule_operation(flag, rule_base_table_dict, business_db, rule_id):
+
+    def process_rule_data(rule_data):
+        return {
+            'rule': {
+                'xml': rule_data.pop('xml'),
+                'javascript': rule_data.pop('javascript_code'),
+                'python': rule_data.pop('python_code')
+            },
+            **rule_data
+        }
+
+    def handle_save_edit(flag, rule_base_table_dict, business_db, rule_id):
         try:
-            if flag == 'save':
-                return save_rule(rule_base_table_dict, business_db, rule_id)
-            elif flag == 'edit':
-                return edit_rule(rule_base_table_dict, business_db, rule_id)
+            return save_rule(rule_base_table_dict, business_db, rule_id) if flag == 'save' else edit_rule(rule_base_table_dict, business_db, rule_id)
         except Exception as e:
             logging.exception(e)
             return log_and_return(f"Error {flag}ing the rule to DB")
-        return None
 
-    # Separate save and edit implementations
     def save_rule(rule_base_table_dict, business_db, rule_id):
         rule_base_table_dict['rule_id'] = rule_id
         if not business_db.insert_dict(table="rule_base", data=rule_base_table_dict):
@@ -912,45 +905,51 @@ def rule_builder_data():
         business_db.update(table="rule_base", update=rule_base_table_dict, where={"rule_id": rule_id})
         return None
 
-    # Extract input validation
-    def validate_input(data):
-        tenant_id = data.get('tenant_id')
-        rule_id = data.get('rule_id', "")
-        if not tenant_id or not rule_id:
-            return log_and_return("Please send valid request data"), None
-        return None, (tenant_id, rule_id)
-
-    # Extract rule execution into a function
-    def execute_rule(data):
-        try:
-            string_python = data.get('rule', {}).get('python', "")
-            return_param = data.get('return_param', "return_data")
-            return test_business_rule(string_python, return_param)
-        except Exception as e:
-            logging.exception(e)
-            return log_and_return("Error executing the rule")
-
-    # Initialize memory and time tracking
     def initialize_timing_and_memory():
         try:
-            return measure_memory_usage(), tt()
+            memory_before = measure_memory_usage()
+            start_time = tt()
+            return memory_before, start_time
         except Exception:
             logging.warning("Failed to start RAM and time calculation")
             return None, None
+
+    def validate_and_extract_data(data):
+        tenant_id, rule_id, case_id = data.get('tenant_id'), data.get('rule_id', ""), data.get('case_id')
+        if not tenant_id or not rule_id:
+            return log_and_return("Please send valid request data"), None
+        return None, (tenant_id, rule_id, case_id)
+
+    def prepare_db_and_trace_id(data, tenant_id, rule_id, case_id):
+        db_config['tenant_id'] = tenant_id
+        trace_id = case_id or rule_id
+        return DB("business_rules", **db_config), ZipkinAttrs(
+            trace_id=trace_id,
+            span_id=generate_random_64bit_string(),
+            parent_span_id=None,
+            flags=None,
+            is_sampled=False,
+            tenant_id=tenant_id
+        )
+
+    def execute_rule(data):
+        try:
+            return test_business_rule(data.get('rule', {}).get('python', ""), data.get('return_param', "return_data"))
+        except Exception as e:
+            logging.exception(e)
+            return log_and_return("Error executing the rule")
 
     # Main logic starts here
     memory_before, start_time = initialize_timing_and_memory()
     data = request.json
 
-    error_response, validation = validate_input(data)
+    error_response, validation = validate_and_extract_data(data)
     if error_response:
         return error_response
 
-    tenant_id, rule_id = validation
-    trace_id = data.get('case_id') or rule_id
-    attr = ZipkinAttrs(trace_id=trace_id, span_id=generate_random_64bit_string(), parent_span_id=None, flags=None, is_sampled=False, tenant_id=tenant_id)
+    tenant_id, rule_id, case_id = validation
+    business_db, attr = prepare_db_and_trace_id(data, tenant_id, rule_id, case_id)
 
-    # Trace each operation in a Zipkin span
     with zipkin_span(service_name='business_rules_api', span_name='rule_builder_data', transport_handler=http_transport, zipkin_attrs=attr, port=5010, sample_rate=0.5):
         username, flag, rule_name = data.get('user', ""), data.get('flag', ""), data.get('rule_name', "")
         if not username or not flag:
@@ -965,21 +964,18 @@ def rule_builder_data():
             'last_modified_by': username
         }
 
-        db_config['tenant_id'] = tenant_id
-        business_db = DB("business_rules", **db_config)
-
-        if flag in ['save', 'edit']:
-            result = handle_rule_operation(flag, rule_base_table_dict, business_db, rule_id)
-            if result:
-                return result
-        elif flag == 'fetch':
-            return jsonify(fetch_and_process_rule(rule_id, business_db))
-        elif flag == 'execute':
-            return_data = execute_rule(data)
+        result = (
+            handle_save_edit(flag, rule_base_table_dict, business_db, rule_id) if flag in ['save', 'edit'] else
+            jsonify(fetch_rule_data(rule_id, business_db)) if flag == 'fetch' else
+            execute_rule(data) if flag == 'execute' else
+            None
+        )
+        if result:
+            return result
 
     memory_consumed, time_consumed = process_time_and_memory(start_time, memory_before)
     logging.info(f"BR Time and RAM checkpoint: Time consumed: {time_consumed}, RAM consumed: {memory_consumed}")
-
+    
     return jsonify(return_data)
 
 def insert_or_update_chain_linker(database,table,data_dict):
