@@ -2808,25 +2808,23 @@ def cons_credi_table(self,parameters):
         return False
 
 @register_method
-def month_and_year(self,parameters):
-
-
+def month_and_year(self, parameters):
     logging.info(f"parameters got are {parameters}")
-    input_=parameters['input']
+    input_ = parameters['input']
     logging.info(f"input_  is {input_}")
+
     try:
-        match = re.search(r'\w+\s\d{4}', input_)
+        match = re.search(r'\b(?:[A-Z][a-z]+|\d{1,2})\s\d{4}\b', input_)
         logging.info(f"match date is {match}")
+
         if match:
             extracted_date = match.group()
             logging.info(f"extracted date is {extracted_date}")
-            result = extracted_date
-            return result
-            
+            return extracted_date
+
     except ValueError:
-        result=input_
-        return result
-        
+        logging.warning("ValueError encountered, returning input as result")
+        return input_        
 @register_method
 def do_validation_params(self, parameters):
     logging.info(f"parameters got are {parameters}")
