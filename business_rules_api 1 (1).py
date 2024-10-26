@@ -1,3 +1,4 @@
+@app.route('/rule_builder_data',methods=['POST','GET'])
 def rule_builder_data():
     def log_and_return(message, flag=False):
         logging.info(message)
