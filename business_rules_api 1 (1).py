@@ -46,6 +46,7 @@ def http_transport(encoded_span):
     except requests.RequestException as e:
         logging.error("An error occurred while sending the request.")
         logging.debug(f"Error details: {e}")  # Log details in debug level
+
 def measure_memory_usage():
     process = psutil.Process()
     memory_info = process.memory_info()
@@ -604,7 +605,7 @@ def execute_business_rules():
             sample_rate=0.5):
 
         message, _, db_config['tenant_id'] = {'flag': False}, True, tenant_id
-        rule_type, _ = data.get('link_type', "rule"), data.get('rule_name', "")
+        _, _ = data.get('link_type', "rule"), data.get('rule_name', "")
         
 
         try:
@@ -872,12 +873,7 @@ def rule_builder_data():
             fetch_query = f"select * from rule_base where rule_id = '{rule_id}'"
             rule_dict = business_db.execute(fetch_query).to_dict(orient="records")
             if rule_dict:
-                rule_data = rule_dict[0]
-                rule_data['rule'] = {
-                    'xml': rule_data.pop('xml'),
-                    'javascript': rule_data.pop('javascript_code'),
-                    'python': rule_data.pop('python_code')
-                }
+                rule_data = process_rule_data(rule_dict[0])
                 logging.info(f"Fetched rule for {rule_id}: {rule_data}")
                 return {"flag": True, "data": rule_data}
             else:
@@ -886,17 +882,33 @@ def rule_builder_data():
             logging.exception(e)
             return {"flag": False, "message": "Error fetching the rule from DB"}
 
+    def process_rule_data(rule_data):
+        rule_data['rule'] = {
+            'xml': rule_data.pop('xml'),
+            'javascript': rule_data.pop('javascript_code'),
+            'python': rule_data.pop('python_code')
+        }
+        return rule_data
+
     def handle_save_edit(flag, rule_base_table_dict, business_db, rule_id):
         try:
             if flag == 'save':
-                rule_base_table_dict['rule_id'] = rule_id
-                if not business_db.insert_dict(table="rule_base", data=rule_base_table_dict):
-                    return log_and_return("Duplicate Rule ID or Error saving the rule to DB")
+                return save_rule(rule_base_table_dict, business_db, rule_id)
             elif flag == 'edit':
-                business_db.update(table="rule_base", update=rule_base_table_dict, where={"rule_id": rule_id})
+                return edit_rule(rule_base_table_dict, business_db, rule_id)
         except Exception as e:
             logging.exception(e)
             return log_and_return(f"Error {flag}ing the rule to DB")
+        return None
+
+    def save_rule(rule_base_table_dict, business_db, rule_id):
+        rule_base_table_dict['rule_id'] = rule_id
+        if not business_db.insert_dict(table="rule_base", data=rule_base_table_dict):
+            return log_and_return("Duplicate Rule ID or Error saving the rule to DB")
+        return None
+
+    def edit_rule(rule_base_table_dict, business_db, rule_id):
+        business_db.update(table="rule_base", update=rule_base_table_dict, where={"rule_id": rule_id})
         return None
 
     def initialize_timing_and_memory():
@@ -908,19 +920,37 @@ def rule_builder_data():
             logging.warning("Failed to start RAM and time calculation")
             return None, None
 
+    def validate_input(data):
+        tenant_id = data.get('tenant_id')
+        rule_id = data.get('rule_id', "")
+        if not tenant_id or not rule_id:
+            return log_and_return("Please send valid request data"), None
+        return None, (tenant_id, rule_id)
+
+    def execute_rule(data):
+        try:
+            string_python = data.get('rule', {}).get('python', "")
+            return_param = data.get('return_param', "return_data")
+            return test_business_rule(string_python, return_param)
+        except Exception as e:
+            logging.exception(e)
+            return log_and_return("Error executing the rule")
+
+    # Main function logic starts here
     memory_before, start_time = initialize_timing_and_memory()
     data = request.json
-    case_id, tenant_id, rule_id = data.get('case_id'), data.get('tenant_id'), data.get('rule_id', "")
 
-    if not all([tenant_id, rule_id]):
-        return log_and_return("Please send valid request data")
+    error_response, validation = validate_input(data)
+    if error_response:
+        return error_response
 
-    trace_id = case_id or rule_id
+    tenant_id, rule_id = validation
+    trace_id = data.get('case_id') or rule_id
     attr = ZipkinAttrs(trace_id=trace_id, span_id=generate_random_64bit_string(), parent_span_id=None, flags=None, is_sampled=False, tenant_id=tenant_id)
 
     with zipkin_span(service_name='business_rules_api', span_name='rule_builder_data', transport_handler=http_transport, zipkin_attrs=attr, port=5010, sample_rate=0.5):
         username, flag, rule_name = data.get('user', ""), data.get('flag', ""), data.get('rule_name', "")
-        if not all([username, flag]):
+        if not username or not flag:
             return log_and_return("Invalid user or flag")
 
         rule_base_table_dict = {
@@ -942,17 +972,11 @@ def rule_builder_data():
         elif flag == 'fetch':
             return jsonify(fetch_rule_data(rule_id, business_db))
         elif flag == 'execute':
-            try:
-                string_python = data.get('rule', {}).get('python', "")
-                return_param = data.get('return_param', "return_data")
-                return_data = test_business_rule(string_python, return_param)
-            except Exception as e:
-                logging.exception(e)
-                return log_and_return("Error executing the rule")
+            return_data = execute_rule(data)
 
     memory_consumed, time_consumed = process_time_and_memory(start_time, memory_before)
     logging.info(f"BR Time and RAM checkpoint: Time consumed: {time_consumed}, RAM consumed: {memory_consumed}")
-    
+
     return jsonify(return_data)
 
 
@@ -1273,7 +1297,7 @@ def check_function_builder():
 
 def get_data_sources(business_rules_db, case_id, column_name, master_data_columns=None, master=False):
     """Helper to get all the required table data for the business rules to apply"""
-    
+
     if master_data_columns is None:
         master_data_columns = {}
 
@@ -1284,8 +1308,17 @@ def get_data_sources(business_rules_db, case_id, column_name, master_data_column
             df = db.execute_(query, params=[case_id])
         else:
             df = db.execute_(query)
-        
+
         return df.to_dict(orient='records') if not df.empty else {}
+
+    def process_sources(db_config, sources):
+        data = {}
+        for database, tables in sources.items():
+            db = DB(database, **db_config)
+            for table in tables:
+                columns_list = ', '.join(master_data_columns.get(table, ['*'])) if master and master_data_columns else None
+                data[table] = fetch_data(db, table, case_id, columns_list)
+        return data
 
     # Retrieve data sources
     data_sources = business_rules_db.execute_("SELECT * from `data_sources`")
@@ -1295,13 +1328,8 @@ def get_data_sources(business_rules_db, case_id, column_name, master_data_column
     if not sources:
         return {}, sources  # Early return if no sources
 
-    data = {}
-    # Process data sources
-    for database, tables in sources.items():
-        db = DB(database, **db_config)
-        for table in tables:
-            columns_list = ', '.join(master_data_columns.get(table, ['*'])) if master and master_data_columns else None
-            data[table] = fetch_data(db, table, case_id, columns_list)
+    # Process and return data
+    data = process_sources(db_config, sources)
 
     return data, sources
 
