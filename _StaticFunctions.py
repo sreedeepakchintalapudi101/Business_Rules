@@ -1758,54 +1758,216 @@ def do_table_error_messages(self, parameters):
         logging.exception(e)
         return False
 
+
+def get_date_formats():
+    # Define constants for date format strings
+    format_dd_mm_yyyy = "%d %m %Y"
+    format_dd_mmm_yyyy = "%d-%b-%Y"
+    format_dd_mmm_yy = "%d-%b-%y"
+    format_dd_mmmm_yyyy = "%d-%B-%Y"
+    format_dd_mmmm_hh_mm_ss = "%d-%m-%Y %H:%M:%S"
+    format_dd_mmmm_hh_mm = "%d-%m-%Y %H:%M"
+    format_yyyy_mm_dd = "%Y-%m-%d"
+    format_yyyy_mm_dd_hh_mm_ss = "%Y-%m-%d %H:%M:%S"
+
+    return {
+        "first_formats": {
+            "dd mm yyyy": format_dd_mm_yyyy,
+            "dd,mmm,yyyy": "%d,%b,%Y",
+            "dd,mmmm,yyyy": "%d,%B,%Y",
+            "dd,mmmm yyyy": "%d,%B %Y",
+            "dd-mmmm-yyyy": format_dd_mmmm_yyyy,
+            "dd mmmm yyyy": "%d %B %Y",
+            "dd-mm-yy": format_dd_mmm_yy,
+            "dd-mm-yy hh:mm:ss": format_dd_mmmm_hh_mm_ss,
+            "dd-mm-yyyy hh:mm:ss": format_dd_mmmm_hh_mm_ss,
+            "dd-mm-yyyy hh:mm": format_dd_mmmm_hh_mm,
+            "dd-bbb-yyyy": format_dd_mmm_yyyy,
+            "dd-bbb-yy": format_dd_mmm_yy,
+            "dd/mm/yy hh:mm:ss": "%d/%m/%y %H:%M:%S",
+            "dd-yy-mm": "%d-%y-%m",
+            "dd mm yyyy hh:mm:ss": f"{format_dd_mm_yyyy} %H:%M:%S",
+            "dd-mmm-yy": format_dd_mmm_yy,
+            "dd-yy-mmm": "%d-%y-%b",
+            "dd-mmm-yyyy": format_dd_mmm_yyyy,
+            "dd-Mmm-yyyy": format_dd_mmm_yyyy,
+            "dd-yyyy-mm": "%d-%Y-%m",
+            "dd-yyyy-mmm": "%d-%Y-%b",
+            "dd/mm/yy": "%d/%m/%y",
+            "dd/yy/mm": "%d/%y/%m",
+            "dd/mm/yyyy": "%d/%m/%Y",
+            "dd/mmm/yy": "%d/%b/%y",
+            "dd/yy/mmm": "%d/%y/%b",
+            "dd/mmm/yyyy": "%d/%b/%Y",
+            "dd/yyyy/mm": "%d/%Y/%m",
+            "dd/yyyy/mmm": "%d/%Y/%b",
+            "dd-mm-yyyy": format_dd_mmmm_yyyy,
+            "dd.mm.yyyy hh:mm:ss": "%d.%m.%Y %H:%M:%S",
+            "dd.mm.yyyy": "%d.%m.%Y",
+            "dd-mm-yyyy hh:mm": format_dd_mmmm_hh_mm,
+            "dd-Mmm-yyyy, hh:mm": "%d-%b-%Y, %H:%M",
+            "dd-Mmm-yy": format_dd_mmm_yy,
+            "dd mmm yyyy": "%d %b %Y",
+            "dd mmm yy": "%d %b %y",
+            "dd bbb yyyy": "%d %b %Y",
+            "dd bbb yy": "%d %b %Y",
+            "dd/mm/yyyy hh:mm:ss AM/PM": f"{format_yyyy_mm_dd_hh_mm_ss} %p",
+            "dd/mm/yyyy hh:mm:ss am/pm": f"{format_yyyy_mm_dd_hh_mm_ss} %p",
+            "dd/mm/yyyy hh:mm": format_yyyy_mm_dd_hh_mm,
+            "dd/mm/yyyy hh:mm:ss": format_yyyy_mm_dd_hh_mm_ss,
+            "dd.mm.yyyy": "%d.%m.%Y",
+            "ddmmyyyy": "%d%m%Y",
+            "ddmmyy": "%d%m%y",
+            "dmmyyyy": "%d%m%Y",
+            "dd.mm.yy": "%d.%m.%y",
+            "dd-mmm-yy hh:mm am/pm": f"{format_dd_mmm_yy} %H:%M %p",
+            "dd-mm-yyyy hh:mm:ss am/pm": f"{format_dd_mmmm_hh_mm_ss} %p",
+            "DD-MM-YYYY HH:MM:SS AM/PM": f"{format_dd_mmmm_hh_mm_ss} %p",
+            "DD-MM-YYYY": format_dd_mmmm_yyyy,
+            "dd-mmm-yy hh:mm:ss": f"{format_dd_mmm_yy} %H:%M:%S",
+            "dd-mmm-yyyy hh:mm:ss": f"{format_dd_mmm_yyyy} %H:%M:%S",
+        },
+        "last_formats": {
+            "mmm dd,yyyy": "%b %d,%Y",
+            "mmmm dd,yyyy": "%B %d,%Y",
+            "mmmm dd, yyyy": "%B %d, %Y",
+            "mm.dd.yy": "%m.%d.%y",
+            "mm.dd.yyyy": "%m.%d.%Y",
+            "m/dd/yy": "%m/%d/%y",
+            "m/d/yy": "%m/%d/%y",
+            "mmmm-dd-yyyy": "%B-%d-%Y",
+            "mmmm dd yyyy": "%B %d %Y",
+            "mm-yy-dd": "%m-%y-%d",
+            "bbb dd, yyyy": "%b %d %Y",
+            "mmm dd, yyyy": "%b %d, %Y",
+            "mmm dd, yyyy hh:mm:ss": "%b %d, %Y %H:%M:%S",
+            "yyyy-mm-dd": format_yyyy_mm_dd,
+            "yyyy-mm": "%Y-%m",
+            "yyyy-mm-dd hh:mm:ss": format_yyyy_mm_dd_hh_mm_ss,
+            "yyyy-mm-dd hh:mm": format_yyyy_mm_dd_hh_mm,
+            "yyyy-mm-dd hh:mm:ss AM/PM": f"{format_yyyy_mm_dd_hh_mm_ss} %p",
+            "yyyy-mm-dd hh:mm AM/PM": f"{format_yyyy_mm_dd_hh_mm} %p",
+            "yyyy-mm-dd hh:mm AM/PM": f"{format_yyyy_mm_dd_hh_mm} %p",
+            "yyyy-mm-dd, hh:mm": f"{format_yyyy_mm_dd}, %H:%M",
+            "yyyy-mm-dd, hh:mm:ss": f"{format_yyyy_mm_dd}, %H:%M:%S",
+            "yyyy/mm/dd": "%Y/%m/%d",
+            "yyyy.mm.dd": "%Y.%m.%d",
+            "yyyy-mm-dd hh:mm:ss A.M.": format_yyyy_mm_dd_hh_mm_ss,
+            "yyyy-mm-dd hh:mm:ss p.m.": format_yyyy_mm_dd_hh_mm_ss,
+            "yyyy-mm-dd hh:mm:ss am": format_yyyy_mm_dd_hh_mm_ss,
+            "yyyy-mm-dd hh:mm:ss pm": format_yyyy_mm_dd_hh_mm_ss,
+            "yyyy/mm/dd hh:mm:ss": "%Y/%m/%d %H:%M:%S",
+            "yyyy-mm-dd hh:mm": format_yyyy_mm_dd_hh_mm,
+            "yyyy-mm-dd, hh:mm": f"{format_yyyy_mm_dd}, %H:%M",
+            "yyyy-mm-dd, hh:mm:ss": f"{format_yyyy_mm_dd}, %H:%M:%S",
+        }
+    }
 @register_method
-@register_method
-def do_date_conversion(self, parameters):
-    input_date = self.get_param_value(parameters['input_date'])
+def do_date_conversion(parameters):
+    input_date = parameters['input_date']  # Assuming parameters is a dict
     date_val = input_date[0:2]
     logging.info(f'date_val is {date_val}')
 
-    from_format = self.get_from_format(date_val)
-    to_format = self.get_to_format()
+    from_format = get_from_format(date_val)
+    to_format = get_to_format()
 
     try:
-        conv_date = self.convert_date(input_date, from_format, to_format)
+        conv_date = convert_date(input_date, from_format, to_format)
         return conv_date if conv_date != input_date else input_date
     except Exception as e:
         logging.error("Date conversion failed")
         logging.error(e)
         return input_date
 
-def get_from_format(self, date_val):
+def get_from_format(date_val):
+    date_formats = get_date_formats()
+    # Using formats from the constant defined earlier
+    first_formats = date_formats["first_formats"]
+    
+    # Define constants for date formats in lowercase
+    format_dd_mmmm_yyyy = "dd,mmmm,yyyy"
+    format_dd_mmm_yyyy = "dd,mmm,yyyy"
+    format_dd_mmmm_yyyy_spaced = "dd mmmm yyyy"
+    format_dd_mmm_yyyy_spaced = "dd mmm yyyy"
+    format_dd_mmm_yyyy_slash = "dd/mmm/yyyy"
+    format_mmmm_dd_yyyy = "mmmm dd, yyyy"
+    format_mmmm_dd_yyyy_comma = "mmmm dd,yyyy"
+    format_mmm_dd_yyyy_comma = "mmm dd,yyyy"
+    format_mmm_dd_yyyy_spaced = "mmm dd, yyyy"
+    format_m_dd_yy = "m/dd/yy"
+    format_m_dd_yy_slash = "m/d/yy"
+    format_dd_mmm_yy = "dd-Mmm-yy"
+
     try:
         date_val = int(date_val)
         if date_val > 12:
             return [
-                "yyyy-mm-dd", 'dd-mm-yyyy', "dd/mm/yyyy", "dd mm yyyy", 
-                "dd,mmmm,yyyy", "dd,mmm,yyyy", "dd-mmmm-yyyy", "dd-mmm-yyyy", 
-                "dd,mmmm yyyy", "dd mmm yyyy", "dd/mmm/yyyy", "dd mmmm yyyy", 
+                "yyyy-mm-dd", 
+                "dd-mm-yyyy", 
+                "dd/mm/yyyy", 
+                "dd mm yyyy", 
+                format_dd_mmmm_yyyy, 
+                format_dd_mmm_yyyy, 
+                "dd-mmmm-yyyy", 
+                "dd-mmm-yyyy", 
+                format_dd_mmmm_yyyy_spaced, 
+                format_dd_mmm_yyyy_spaced, 
+                format_dd_mmm_yyyy_slash, 
+                "dd mmmm yyyy", 
                 "dd-Mmm-yy"
             ]
         else:
             return [
-                'mm-dd-yyyy', "mm.dd.yyyy", "mm/dd/yyyy", "mm/dd/yy", "mm.dd.yy", 
-                "mm-dd-yy", "dd,mmmm,yyyy", "dd,mmm,yyyy", "mmmm dd, yyyy", 
-                "dd-mmmm-yyyy", "dd-mmm-yyyy", "yyyy-mm-dd", "dd,mmmm yyyy", 
-                "mmmm dd,yyyy", "mmm dd,yyyy", "dd mmm yyyy", "dd/mmm/yyyy", 
-                "mmm dd, yyyy", "m/dd/yy", "m/d/yy", "dd-Mmm-yy", "dd mmmm yyyy"
+                "mm-dd-yyyy", 
+                "mm.dd.yyyy", 
+                "mm/dd/yyyy", 
+                "mm/dd/yy", 
+                "mm.dd.yy", 
+                "mm-dd-yy", 
+                format_dd_mmmm_yyyy, 
+                format_dd_mmm_yyyy, 
+                format_mmmm_dd_yyyy, 
+                "dd-mmmm-yyyy", 
+                "dd-mmm-yyyy", 
+                "yyyy-mm-dd", 
+                format_dd_mmmm_yyyy_spaced, 
+                format_mmmm_dd_yyyy_comma, 
+                format_mmm_dd_yyyy_comma, 
+                format_dd_mmm_yyyy_spaced, 
+                format_mmm_dd_yyyy_spaced, 
+                format_m_dd_yy, 
+                format_m_dd_yy_slash, 
+                "dd-Mmm-yy", 
+                "dd mmmm yyyy"
             ]
     except Exception as e:
         logging.info('Error determining from_format')
         logging.info(e)
         return [
-            'mm-dd-yyyy', "mm.dd.yyyy", "mm/dd/yyyy", "mm/dd/yy", "mm.dd.yy", 
-            "mm-dd-yy", "mmmm dd, yyyy", "dd,mmmm,yyyy", "dd,mmm,yyyy", 
-            "dd-mmmm-yyyy", "dd-mmm-yyyy", "yyyy-mm-dd", "dd,mmmm yyyy", 
-            "mmmm dd,yyyy", "mmm dd,yyyy", "dd mmm yyyy", "dd/mmm/yyyy", 
-            "mmm dd, yyyy", "m/dd/yy", "m/d/yy", "dd-Mmm-yy", "dd mmmm yyyy"
+            "mm-dd-yyyy", 
+            "mm.dd.yyyy", 
+            "mm/dd/yyyy", 
+            "mm/dd/yy", 
+            "mm.dd.yy", 
+            "mm-dd-yy", 
+            format_mmmm_dd_yyyy, 
+            format_dd_mmmm_yyyy, 
+            format_dd_mmm_yyyy, 
+            "dd-mmmm-yyyy", 
+            "dd-mmm-yyyy", 
+            "yyyy-mm-dd", 
+            format_dd_mmmm_yyyy_spaced, 
+            format_mmmm_dd_yyyy_comma, 
+            format_mmm_dd_yyyy_comma, 
+            format_dd_mmm_yyyy_spaced, 
+            format_mmm_dd_yyyy_spaced, 
+            format_m_dd_yy, 
+            format_m_dd_yy_slash, 
+            "dd-Mmm-yy", 
+            "dd mmmm yyyy"
         ]
 
-def get_to_format(self):
+def get_to_format():
     to_format = 'dd-mm-yyyy'
     try:
         return get_output_date_format(to_format.lower())
@@ -1814,82 +1976,39 @@ def get_to_format(self):
         logging.error(e)
         return to_format
 
-def convert_date(self, input_date, from_format_list, to_format):
-    date_first_formats = self.get_date_first_formats()
-    date_last_formats = self.get_date_last_formats()
+def convert_date(input_date, from_format_list, to_format):
+    date_formats = get_date_formats()
+    date_first_formats = date_formats["first_formats"]
+    date_last_formats = date_formats["last_formats"]
 
     for from_format in from_format_list:
-        conv_date = self.try_convert_date(input_date, from_format, date_first_formats, date_last_formats, to_format)
+        conv_date = try_convert_date(input_date, from_format, date_first_formats, date_last_formats, to_format)
         if conv_date != input_date:
             logging.info('final date is 1')
             return conv_date
     logging.info('final date is 2')
     return input_date
 
-def try_convert_date(self, text, from_format, date_first_formats, date_last_formats, to_format):
+def try_convert_date(text, from_format, date_first_formats, date_last_formats, to_format):
     if from_format.lower() in date_first_formats.keys():
         final_format = date_first_formats[from_format.lower()]
-        return self.convert_date_format(text, final_format, dayfirst=True)
+        dtime = convert_date_format(text, final_format, dayfirst=True)
+        return dtime.strftime(to_format) if dtime is not None else text
     elif from_format.lower() in date_last_formats.keys():
         final_format = date_last_formats[from_format.lower()]
-        return self.convert_date_format(text, final_format)
+        dtime = convert_date_format(text, final_format)
+        return dtime.strftime(to_format) if dtime is not None else text
     else:
         logging.info('Format not found, skipping conversion')
         return text
 
-def convert_date_format(self, text, from_format, dayfirst=False):
+def convert_date_format(text, from_format, dayfirst=False):
     try:
         dtime = pd.to_datetime(str(text).strip(), exact=False, dayfirst=dayfirst, errors='coerce', format=from_format)
-        return dtime.strftime(self.get_to_format())
+        return dtime.strftime(get_to_format())
     except Exception:
         logging.error(f'Failed to convert date: {text}')
         return text
-
-def get_date_first_formats(self):
-    return {
-        "dd mm yyyy": "%d %m %Y", "dd,mmm,yyyy": "%d,%b,%Y", "dd,mmmm,yyyy": "%d,%B,%Y",
-        "dd,mmmm yyyy": "%d,%B %Y", "dd-mmmm-yyyy": "%d-%B-%Y", "dd mmmm yyyy": "%d %B %Y",
-        "dd-mm-yy": "%d-%m-%y", "dd-mm-yy hh:mm:ss": "%d-%m-%y %H:%M:%S", 
-        "dd-mm-yyyy hh:mm:ss": "%d-%m-%Y %H:%M:%S", "dd-mm-yyyy hh:mm": "%d-%m-%Y %H:%M",
-        "dd-bbb-yyyy": "%d-%b-%Y", "dd-bbb-yy": "%d-%b-%y", "dd/mm/yy hh:mm:ss": "%d/%m/%y %H:%M:%S", 
-        "dd-yy-mm": "%d-%y-%m", "dd mm yyyy hh:mm:ss": "%d %m %Y %H:%M:%S", 
-        "dd-mmm-yy": "%d-%b-%y", "dd-yy-mmm": "%d-%y-%b", "dd-mmm-yyyy": "%d-%b-%Y", 
-        "dd-Mmm-yyyy": "%d-%b-%Y", "dd-yyyy-mm": "%d-%Y-%m", "dd-yyyy-mmm": "%d-%Y-%b", 
-        "dd/mm/yy": "%d/%m/%y", "dd/yy/mm": "%d/%y/%m", "dd/mm/yyyy": "%d/%m/%Y", 
-        "dd/mmm/yy": "%d/%b/%y", "dd/yy/mmm": "%d/%y/%b", "dd/mmm/yyyy": "%d/%b/%Y",
-        "dd/yyyy/mm": "%d/%Y/%m", "dd/yyyy/mmm": "%d/%Y/%b", "dd-mm-yyyy": "%d-%m-%Y", 
-        "dd.mm.yyyy hh:mm:ss": "%d.%m.%Y %H:%M:%S", "dd.mm.yyyy": "%d.%m.%Y", 
-        "dd-mm-yyyy hh:mm": "%d-%m-%Y %H:%M", "dd-Mmm-yyyy, hh:mm": "%d-%b-%Y, %H:%M", 
-        "dd-Mmm-yy": "%d-%b-%y", "dd mmm yyyy": "%d %b %Y", "dd mmm yy": "%d %b %y", 
-        "dd bbb yyyy": "%d %b %Y", "dd bbb yy": "%d %b %Y", "dd/mm/yyyy hh:mm:ss AM/PM": "%d/%m/%Y %H:%M:%S %p",
-        "dd/mm/yyyy hh:mm:ss am/pm": "%d/%m/%Y %H:%M:%S %p", "dd/mm/yyyy hh:mm": "%d/%m/%Y %H:%M", 
-        "dd/mm/yyyy hh:mm:ss": "%d/%m/%Y %H:%M:%S", "dd.mm.yyyy": "%d.%m.%Y", 
-        "ddmmyyyy": "%d%m%Y", "ddmmyy": "%d%m%y", "dmmyyyy": "%d%m%Y", 
-        "dd.mm.yy": "%d.%m.%y", "dd-mmm-yy hh:mm am/pm": "%d-%b-%y %H:%M %p", 
-        "dd-mm-yyyy hh:mm:ss am/pm": "%d-%m-%Y %H:%M:%S %p", "DD-MM-YYYY HH:MM:SS AM/PM": "%d-%m-%Y %H:%M:%S %p", 
-        "DD-MM-YYYY": "%d-%m-%Y", "dd-mmm-yy hh:mm:ss": "%d-%b-%y %H:%M:%S", 
-        "dd-mmm-yyyy hh:mm:ss": "%d-%b-%Y %H:%M:%S"
-    }
-
-def get_date_last_formats(self):
-    return {
-        "mmm dd,yyyy": "%b %d,%Y", "mmmm dd,yyyy": "%B %d,%Y", 
-        "mmmm dd, yyyy": "%B %d, %Y", "mm.dd.yy": "%m.%d.%y", 
-        "mm.dd.yyyy": "%m.%d.%Y", "m/dd/yy": "%m/%d/%y", "m/d/yy": "%m/%d/%y", 
-        "mmmm-dd-yyyy": "%B-%d-%Y", "mmmm dd yyyy": "%B %d %Y", 
-        "mm-yy-dd": "%m-%y-%d", "bbb dd, yyyy": "%b %d %Y", 
-        "mmm dd, yyyy": "%b %d, %Y", "mmm dd, yyyy hh:mm:ss": "%b %d, %Y %H:%M:%S", 
-        "yyyy-mm-dd": "%Y-%m-%d", "yyyy-mm": "%Y-%m", 
-        "yyyy-mm-dd hh:mm:ss": "%Y-%m-%d %H:%M:%S", "yyyy-mm-dd hh:mm": "%Y-%m-%d %H:%M",
-        "yyyy-mm-dd hh:mm:ss AM/PM": "%Y-%m-%d %H:%M:%S %p", "yyyy-mm-dd hh:mm AM/PM": "%Y-%m-%d %H:%M %p", 
-        "yyyy-mm-dd hh:mm AM/PM": "%Y-%m-%d %H:%M %p", "yyyy-mm-dd, hh:mm": "%Y-%m-%d, %H:%M", 
-        "yyyy-mm-dd, hh:mm:ss": "%Y-%m-%d, %H:%M:%S", "yyyy/mm/dd": "%Y/%m/%d", 
-        "yyyy.mm.dd": "%Y.%m.%d", "yyyy-mm-dd hh:mm:ss A.M.": "%Y-%m-%d %H:%M:%S %p", 
-        "yyyy-mm-dd hh:mm:ss p.m.": "%Y-%m-%d %H:%M:%S %p", "yyyy-mm-dd hh:mm:ss am": "%Y-%m-%d %H:%M:%S %p", 
-        "yyyy-mm-dd hh:mm:ss pm": "%Y-%m-%d %H:%M:%S %p", "yyyy/mm/dd hh:mm:ss": "%Y/%m/%d %H:%M:%S",
-        "yyyy-mm-dd hh:mm": "%Y-%m-%d %H:%M", "yyyy-mm-dd, hh:mm": "%Y-%m-%d, %H:%M", 
-        "yyyy-mm-dd, hh:mm:ss": "%Y-%m-%d, %H:%M:%S"
-    }
 
 
 @register_method
@@ -3428,6 +3547,7 @@ def array_data_append(self,parameters):
             logging.error("Invalid data provided.",exc_info=True)
             return None
     
+
 
 
 
