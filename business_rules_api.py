@@ -1370,7 +1370,7 @@ def run_business_rule():
             return jsonify({"flag": False, "message": "Please provide valid case_id, tenant_id and rule_id"})
 
         # Fetch data from sources
-        data_tables, update_table_sources = process_data_sources(business_rules_db, case_id, master_data_require, master_data_columns)
+        data_tables, _ = process_data_sources(business_rules_db, case_id, master_data_require, master_data_columns)
 
         # Execute business rules and return data
         response_data = execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes)
