@@ -1373,7 +1373,7 @@ def run_business_rule():
         data_tables, update_table_sources = process_data_sources(business_rules_db, case_id, master_data_require, master_data_columns)
 
         # Execute business rules and return data
-        response_data = execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes, update_table_sources)
+        response_data = execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes)
 
         # Log memory usage and time
         log_memory_usage(memory_before)
@@ -1445,7 +1445,7 @@ def merge_data_sources(case_id_sources, master_data_sources):
     logging.info(f"update_table_sources: {update_table_sources}")
     return update_table_sources
 
-def execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes, update_table_sources):
+def execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes):
     try:
         rule_id = ast.literal_eval(rule_id) if return_vars == '' else rule_id
     except Exception:
