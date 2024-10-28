@@ -1793,7 +1793,7 @@ def do_date_conversion(self, parameters):
             ]
         else:
             from_format = [
-                mm_dd_yyyy, "mm.dd.yyyy", "mm/dd/yyyy", 
+                mm_dd_yyyy, "mm.dd.yyyy", mm_dd_yyyy, 
                 "mm/dd/yy", "mm.dd.yy", "mm-dd-yy",
                 dd_mmmm_yyyy, dd_mmm_yyyy, mmmm_dd_comma_yyyy,
                 "dd-mmmm-yyyy", "dd-mmm-yyyy", "yyyy-mm-dd",
@@ -1805,7 +1805,7 @@ def do_date_conversion(self, parameters):
             ]
     except Exception as e:
         from_format = [
-            mm_dd_yyyy, "mm.dd.yyyy", "mm/dd/yyyy", 
+            mm_dd_yyyy, "mm.dd.yyyy", mm_dd_yyyy, 
             "mm/dd/yy", "mm.dd.yy", "mm-dd-yy",
             "mmmm dd, yyyy", dd_mmmm_yyyy, dd_mmm_yyyy,
             "dd-mmmm-yyyy", "dd-mmm-yyyy", "yyyy-mm-dd",
@@ -1881,7 +1881,7 @@ def do_date_conversion(self, parameters):
                 "yyyy-mmm-dd": "%Y-%b-%d", "mm/yy/dd": "%m/%y/%d",
                 "yy/dd/mm": "%y/%d/%m", "yy/mm/dd": "%y/%m/%d",
                 "mm/dd/yy": format_m_d_slash_y, "mm/yyyy/dd": "%m/%Y/%d",
-                "mm/dd/yyyy": "%m/%d/%Y", "yyyy/dd/mm": "%Y/%d/%m",
+                 mm_dd_yyyy: "%m/%d/%Y", "yyyy/dd/mm": "%Y/%d/%m",
                 "yyyy/mm/dd": "%Y/%m/%d", "mmm/yy/dd": "%b/%y/%d",
                 "mmm/dd/yy": "%b/%d/%y", "yy/dd/mmm": "%y/%d/%b",
                 "yy/mmm/dd": "%y/%b/%d", "mmm/yyyy/dd": "%b/%Y/%d",
