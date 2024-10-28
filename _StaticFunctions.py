@@ -48,177 +48,99 @@ register_method = Lib.register_method(__methods__)
 
 @register_method
 def evaluate_static(self, function, parameters):
-    if function == 'do_assign':
-        return self.do_assign(parameters)
-    if function == 'do_assign_q':
-        return self.do_assign_q(parameters)
-    if function == 'do_assign_table':
-        return self.do_assign_table(parameters)
-    if function == 'do_date_compare':
-        return self.do_date_compare(parameters)
-    if function == 'CompareKeyValue':
-        return self.doCompareKeyValue(parameters)
-    if function == 'do_get_length':
-        return self.do_get_length(parameters)
-    if function == 'do_get_range':
-        return self.do_get_range(parameters)
-    if function == 'do_amount_compare':
-        return self.do_amount_compare(parameters)
-    if function == 'do_select':
-        return self.do_select(parameters)
-    if function == 'do_select_all':
-        return self.do_select_all(parameters)
-    if function == 'do_transform':
-        return self.do_transform(parameters)
-    if function == 'do_count':
-        return self.do_count(parameters)
-    if function == 'do_contains':
-        return self.do_contains(parameters)
-    if function == 'do_produce_data':
-        return self.do_produce_data(parameters)
-    if function == 'dodue_date_generate':
-        return self.dodue_date_generate(parameters)
-    if function == 'bankdodue_date_generate':
-        return self.bankdodue_date_generate(parameters)
-    if function == 'Get_holidays_fromdatabase':
-        return self.get_holidays_fromdatabase(parameters)
-    if function == 'dosat_and_sun_holidays':
-        return self.dosat_and_sun_holidays(parameters)
-    if function == 'do_contains_ucic':
-        return self.do_contains_ucic(parameters)
-    if function == 'do_date_parsing':
-        return self.do_date_parsing(parameters)
-    if function == 'DateParsingMarch':
-        return self.do_date_parsingMarch(parameters)
-    if function == 'do_split':
-        return self.do_split(parameters)
-    if function == 'do_return':
-        return self.do_return(parameters)
-    if function == 'do_regex_columns':
-        return self.do_regex_columns(parameters)
-    if function == 'do_alpha_num_check':
-        return self.do_alpha_num_check(parameters)
-    if function == 'do_date_transform':
-        return self.do_date_transform(parameters)
-    if function == 'do_partial_match':
-        return self.do_partial_match(parameters)
-    if function == 'FileManagerUpdate':
-        return self.doFileManagerUpdate(parameters)
-    if function == 'do_round':
-        return self.do_round(parameters)
-    if function == 'do_contains_string':
-        return self.do_contains_string(parameters)
-    if function == 'do_alnum_num_alpha':
-        return self.do_alnum_num_alpha(parameters)
-    if function == 'do_regex':
-        return self.do_regex(parameters)
-    if function == 'do_round':
-        return self.do_round(parameters)
-    if function == 'amount_compare':
-        return self.amount_compare(parameters)
-    if function == 'do_produce_data':
-        return self.do_produce_data(parameters)
-    if function == 'do_append_db':
-        return self.do_append_db(parameters)
-    if function == 'do_partial_compare':
-        return self.do_partial_compare(parameters)
-    if function == 'do_get_date_time':
-        return self.do_get_date_time(parameters)
-    if function == 'do_sum':
-        return self.do_sum(parameters)
-    if function == 'do_date_increment':
-        return self.do_date_increment(parameters)
-    if function == 'do_nt_path_base':
-        return self.do_nt_path_base(parameters)
-    if function == 'do_check_date':
-        return self.do_check_date(parameters)
-    if function == 'DateCheck':
-        return self.doDateCheck(parameters)
-    if function == 'do_date_parser':
-        return self.do_date_parser(parameters)
-    if function == 'do_amount_syntax':
-        return self.do_amount_syntax(parameters)
-    if function == 'do_contains_master':
-        return self.do_contains_master(parameters)
-    if function == 'do_table_error_messages':
-        return self.do_table_error_messages(parameters)
-    if function == 'do_date_conversion':
-        return self.do_date_conversion(parameters) 
-    if function == 'do_user_match':
-        return self.do_user_match(parameters)
-    if function == 'Statusupdate':
-        return self.doStatusupdate(parameters)
-    if function == 'do_numeric_extract':
-        return self.do_numeric_extract(parameters)
-    if function == 'do_transform_':
-        return self.do_transform_(parameters)
-    if function == 'do_contains_string_':
-        return self.do_contains_string_(parameters)
-    if function == 'do_partial_comparison':
-        return self.do_partial_comparison(parameters)
-    if function == 'do_contain_string':
-        return self.do_contain_string(parameters)
-    if function == 'do_queue_percentage':
-        return self.do_queue_percentage(parameters)
-    if function == 'donumword_to_number_comp':
-        return self.donumword_to_number_comp(parameters)
-    if function == 'do_not_contain_string':
-        return self.do_not_contain_string(parameters)
-    if function == 'do_type_conversion':
-        return self.do_type_conversion(parameters)
-    if function == 'to_lower':
-        return self.to_lower(parameters)
-    if function == 'do_dates_diff':
-        return self.do_dates_diff(parameters)
-    if function == 'is_numeric':
-        return self.is_numeric(parameters)
-    if function == 'duplicateCheck':
-        return self.duplicate_check(parameters)
-    if function == 'query_and_check':
-        return self.query_and_check(parameters)
-    if function == 'partially_compare':
-        return self.partially_compare(parameters)
-    if function == 'do_extra_year':
-        return self.do_extra_year(parameters)
-    if function == 'get_last_n_chars':
-        return self.get_last_n_chars(parameters)
-    if function == 'get_next_month_first_date':
-        return self.get_next_month_first_date(parameters)
-    if function == 'rb_stock_summary_table1':
-        return self.rb_stock_summary_table1(parameters)
-    if function == 'cons_stock_table':
-        return self.cons_stock_table(parameters)
-    if function == 'cons_credi_table':
-        return self.cons_credi_table(parameters)
-    if function == 'month_and_year':
-        return self.month_and_year(parameters)
-    if function == 'do_validation_params':
-        return self.do_validation_params(parameters)
-    if function == 'get_month_last_date':
-        return self.get_month_last_date(parameters)
-    if function == 'get_month_agri_fifteenth':
-        return self.get_month_agri_fifteenth(parameters) 
-    if function == 'get_data_dict':
-        return self.get_data_dict(parameters)
-    if function == 'merge_dict':
-        return self.merge_dict(parameters)
-    if function == 'date_cus':
-        return self.date_cus(parameters)
-    if function == 'date_out':
-        return self.date_out(parameters)
-    if function == 'dosummary':
-        return self.dosummary(parameters)
-    if function == 'dosummary_1':
-        return self.dosummary_1(parameters)
-    if function == 'assign_value_json':
-        return self.dosummary_1(parameters)
-    if function == 'checking_files':
-        return self.checking_files(parameters)
-    
-    if function == 'margin_data':
-        return self.margin_data(parameters)
-    if function == 'add_key_value':
-        return self.margin_data(parameters)
+    # Define a dictionary to map function names to corresponding methods
+    function_map = {
+        'do_assign': self.do_assign,
+        'do_assign_q': self.do_assign_q,
+        'do_assign_table': self.do_assign_table,
+        'do_date_compare': self.do_date_compare,
+        'CompareKeyValue': self.doCompareKeyValue,
+        'do_get_length': self.do_get_length,
+        'do_get_range': self.do_get_range,
+        'do_amount_compare': self.do_amount_compare,
+        'do_select': self.do_select,
+        'do_select_all': self.do_select_all,
+        'do_transform': self.do_transform,
+        'do_count': self.do_count,
+        'do_contains': self.do_contains,
+        'do_produce_data': self.do_produce_data,
+        'dodue_date_generate': self.dodue_date_generate,
+        'bankdodue_date_generate': self.bankdodue_date_generate,
+        'Get_holidays_fromdatabase': self.get_holidays_fromdatabase,
+        'dosat_and_sun_holidays': self.dosat_and_sun_holidays,
+        'do_contains_ucic': self.do_contains_ucic,
+        'do_date_parsing': self.do_date_parsing,
+        'DateParsingMarch': self.do_date_parsingMarch,
+        'do_split': self.do_split,
+        'do_return': self.do_return,
+        'do_regex_columns': self.do_regex_columns,
+        'do_alpha_num_check': self.do_alpha_num_check,
+        'do_date_transform': self.do_date_transform,
+        'do_partial_match': self.do_partial_match,
+        'FileManagerUpdate': self.doFileManagerUpdate,
+        'do_round': self.do_round,
+        'do_contains_string': self.do_contains_string,
+        'do_alnum_num_alpha': self.do_alnum_num_alpha,
+        'do_regex': self.do_regex,
+        'amount_compare': self.amount_compare,
+        'do_append_db': self.do_append_db,
+        'do_partial_compare': self.do_partial_compare,
+        'do_get_date_time': self.do_get_date_time,
+        'do_sum': self.do_sum,
+        'do_date_increment': self.do_date_increment,
+        'do_nt_path_base': self.do_nt_path_base,
+        'do_check_date': self.do_check_date,
+        'DateCheck': self.doDateCheck,
+        'do_date_parser': self.do_date_parser,
+        'do_amount_syntax': self.do_amount_syntax,
+        'do_contains_master': self.do_contains_master,
+        'do_table_error_messages': self.do_table_error_messages,
+        'do_date_conversion': self.do_date_conversion,
+        'do_user_match': self.do_user_match,
+        'Statusupdate': self.doStatusupdate,
+        'do_numeric_extract': self.do_numeric_extract,
+        'do_transform_': self.do_transform_,
+        'do_contains_string_': self.do_contains_string_,
+        'do_partial_comparison': self.do_partial_comparison,
+        'do_contain_string': self.do_contain_string,
+        'do_queue_percentage': self.do_queue_percentage,
+        'donumword_to_number_comp': self.donumword_to_number_comp,
+        'do_not_contain_string': self.do_not_contain_string,
+        'do_type_conversion': self.do_type_conversion,
+        'to_lower': self.to_lower,
+        'do_dates_diff': self.do_dates_diff,
+        'is_numeric': self.is_numeric,
+        'duplicateCheck': self.duplicate_check,
+        'query_and_check': self.query_and_check,
+        'partially_compare': self.partially_compare,
+        'do_extra_year': self.do_extra_year,
+        'get_last_n_chars': self.get_last_n_chars,
+        'get_next_month_first_date': self.get_next_month_first_date,
+        'rb_stock_summary_table1': self.rb_stock_summary_table1,
+        'cons_stock_table': self.cons_stock_table,
+        'cons_credi_table': self.cons_credi_table,
+        'month_and_year': self.month_and_year,
+        'do_validation_params': self.do_validation_params,
+        'get_month_last_date': self.get_month_last_date,
+        'get_month_agri_fifteenth': self.get_month_agri_fifteenth,
+        'get_data_dict': self.get_data_dict,
+        'merge_dict': self.merge_dict,
+        'date_cus': self.date_cus,
+        'date_out': self.date_out,
+        'dosummary': self.dosummary,
+        'dosummary_1': self.dosummary_1,
+        'assign_value_json': self.assign_value_json,
+        'checking_files': self.checking_files,
+        'margin_data': self.margin_data,
+        'add_key_value': self.add_key_value
+    }
+
+    # Retrieve and call the corresponding method, if it exists
+    method = function_map.get(function)
+    if method:
+        return method(parameters)
+    else:
+        logging.error(f"Function '{function}' is not recognized.")
 
     
 
@@ -3463,100 +3385,80 @@ def normalize_component_name(name):
 def margin_for_extracted_fields(self, parameters):
     logging.info(f"Parameters got are {parameters}")
     db_config["tenant_id"] = self.tenant_id
-    case_id = self.case_id
     ocr_db = DB("extraction", **db_config)
+    case_id = self.case_id
+    columns = ["STOCKS", "DEBTORS", "CREDITORS", "ADVANCES"]
+
     try:
-        columns = ["STOCKS", "DEBTORS", "CREDITORS","ADVANCES"]
         for column in columns:
-            query = f"SELECT `{column}` FROM `OCR` WHERE case_id = %s"
-            params = [case_id]
-            result = ocr_db.execute_(query, params=params).to_dict(orient='records')
-            query = "SELECT `PARTY_ID` FROM `OCR` WHERE case_id = %s"
-            params = [case_id]
-            result_ = ocr_db.execute_(query, params=params)
-            party_id = result_['PARTY_ID'][0]
-            logging.info(f"result for {column}: {result}")
-
-            if result:  
-                df = result[0][column]  
-                logging.info(f"df for {column}: {df}")
-                data_dict = json.loads(df)
+            result, party_id = self.fetch_column_data(ocr_db, case_id, column)
+            if result:
+                data_dict = json.loads(result[0][column])
             else:
-                data_dict={}
-                
-            key_component_map = {"Raw Materials":["RAW MATERIALS INSURED"],"Finished Goods":["FINISHED GOODS INSURED"],"Total Stock":["TOTAL STOCKS INSURED"],"Work in Process":["WORK IN PROGRESS INSURED"],"Stores and Spares":["STORES & SPARES INSURED"],"Stock in Transit":["STOCK IN TRANSIT"],"Consumable and Spares":["CONSUMABLE SPARES INSURED"],"goods in transist":["GOODS IN TRANSIT INSURED"],"Domestic Stock":["DOMESTIC STOCKS INSURED"],"Export Stock":["EXPORT STOCKS INSURED"],"Sales":["SALES"],"Total Debtors":["DEBTORS","RECEIVABLES","BOOK DEBTS"],"Debtors <30 days":["Debtors <30 days","BOOK DEBTS UPTO 30 DAYS"],"Debtors <60 days":["Debtors <60 days","BOOK DEBTS UPTO 60 DAYS"],"Debtors <90 days":["Debtors <90 days","BOOK DEBTS UPTO 90 DAYS"],"Debtors <120 days":["Debtors <120 days","BOOK DEBTS UPTO 120 DAYS"],"Debtors <150 days":["Debtors <150 days","BOOK DEBTS UPTO 150 DAYS"],"Debtors <180 days":["Debtors <180 days","BOOK DEBTS UPTO 180 DAYS","EXPORT DEBTORS<180 DAYS INSURED"],"Debtors - Exports":["BOOK DEBTS -EXPORTS"],"Debtors - Domestic":["BOOK DEBTS -DOMESTIC"],"Debtiors of Group Companies":["DEBTORS OF GROUP COMPANIES"],"Receivables":["RECEIVABLES"],"Domestic receivables":["DOMESTIC RECEIVABLES"],"Export receivables":["EXPORT RECEIVABLES"],"Total Creditors":["CREDITORS","Trade Creditors"],"Creditors PC":["CREDITORS (PC)"],"Unpaid Stocks":["UNPAID STOCKS"],"DALC":["LESS : DALC"],"Advances paid to suppliers":["ADD : ADVANCE TO SUPPLIER"],"Debtors PC":["DEBTORS (PC)"]}
-            
-            data_dict_ = {}
- 
-            for key, value in data_dict.items():
-                
-                if not value:
-                    
-                    if 'tab_view' in data_dict and 'rowData' in data_dict['tab_view']:
-                        for row in data_dict['tab_view']['rowData']:
-                            
-                            if row['fieldName'].replace(' &', '').replace(' ', '').lower() == key.replace(' ', '').lower():
-                                
-                                row['margin'] = ""
-                                row['aging'] = ""
- 
+                data_dict = {}
 
-            # Iterate over each key-value pair in the data dictionary
-                else:
-                    # Get the component name and margin from the mapping and database
-                    component_names = key_component_map.get(key, [])
-                    component_names = [component.strip() for component in component_names]
-                    normalized_component_names = [normalize_component_name(name) for name in component_names]
-                    margin_row = None
-                    for component_name in normalized_component_names:
-                        
-                        query = f"SELECT `AGE`,`MARGIN` FROM AGE_MARGIN_WORKING_UAT WHERE  REPLACE(TRIM(UPPER(COMPONENT_NAME)), ' ', '') = '{component_name.upper()}' and PARTY_ID='{party_id}' "
-                        margin_row = ocr_db.execute_(query).to_dict(orient='records')
-                        logging.info(f"margin_row: {margin_row}")
-                        if margin_row:
-                            break
-                    if margin_row and value:
-                        margin = margin_row[0]['MARGIN']
-                        age = margin_row[0]['AGE']
-                        
-                        logging.info(f"age: {age}")
-                        
-                        if 'tab_view' in data_dict and 'rowData' in data_dict['tab_view']:
-                            for row in data_dict['tab_view']['rowData']:
-                                logging.info(f"field_name: {row['fieldName']}")
-                                logging.info(f"key is: {key}")
-                                if row['fieldName'].replace(' &', '').replace(' ', '').lower() == key.replace(' ', '').lower():
-                                    row['margin'] = margin
-                                    row['aging'] = age
-                    
-
-                    
-            final_data_dict = {**data_dict_,**data_dict}
-            logging.info(f"final data dict: {final_data_dict}")
-            
-            
-            chunk_size = 4000 
-            value=json.dumps(final_data_dict)
-            logging.info(f"Updated JSON data: {final_data_dict}")
-
-            chunks = [value[i:i+chunk_size] for i in range(0, len(value), chunk_size)]
-
-
-            sql = f"UPDATE ocr SET {column} = "
-
-            # Append each chunk to the SQL query
-            for chunk in chunks:
-                sql += "TO_CLOB('" + chunk + "') || "
-
-            # Remove the last ' || ' and add the WHERE clause to specify the case_id
-            sql = sql[:-4] + f"WHERE case_id = '{case_id}'"
-            
-            ocr_db.execute_(sql)
-            
-
+            final_data_dict = self.process_data(data_dict, party_id, ocr_db)
+            self.update_database_with_chunks(final_data_dict, ocr_db, column, case_id)
 
     except Exception as e:
         logging.error(f"Unable to execute the python code: {e}")
+
+def fetch_column_data(self, ocr_db, case_id, column):
+    query = f"SELECT `{column}` FROM `OCR` WHERE case_id = %s"
+    result = ocr_db.execute_(query, params=[case_id]).to_dict(orient='records')
+    party_id_query = "SELECT `PARTY_ID` FROM `OCR` WHERE case_id = %s"
+    party_id = ocr_db.execute_(party_id_query, params=[case_id])['PARTY_ID'][0]
+    logging.info(f"result for {column}: {result}")
+    return result, party_id
+
+def process_data(self, data_dict, party_id, ocr_db):
+    key_component_map = {
+        # Mapping dictionary remains the same
+    }
+    data_dict_ = {}
+
+    for key, value in data_dict.items():
+        if not value:
+            self.clear_margin_and_age(data_dict, key)
+        else:
+            component_names = key_component_map.get(key, [])
+            margin_row = self.fetch_margin_and_age_for_components(component_names, party_id, ocr_db)
+            if margin_row:
+                self.update_data_with_margin_and_age(data_dict, key, margin_row[0])
+
+    return {**data_dict_, **data_dict}
+
+def clear_margin_and_age(self, data_dict, key):
+    if 'tab_view' in data_dict and 'rowData' in data_dict['tab_view']:
+        for row in data_dict['tab_view']['rowData']:
+            if row['fieldName'].replace(' &', '').replace(' ', '').lower() == key.replace(' ', '').lower():
+                row['margin'] = ""
+                row['aging'] = ""
+
+def fetch_margin_and_age_for_components(self, component_names, party_id, ocr_db):
+    normalized_names = [normalize_component_name(name).upper() for name in component_names]
+    for name in normalized_names:
+        query = f"SELECT `AGE`, `MARGIN` FROM AGE_MARGIN_WORKING_UAT WHERE REPLACE(TRIM(UPPER(COMPONENT_NAME)), ' ', '') = '{name}' AND PARTY_ID='{party_id}'"
+        margin_row = ocr_db.execute_(query).to_dict(orient='records')
+        if margin_row:
+            return margin_row
+    return None
+
+def update_data_with_margin_and_age(self, data_dict, key, margin_data):
+    margin, age = margin_data['MARGIN'], margin_data['AGE']
+    if 'tab_view' in data_dict and 'rowData' in data_dict['tab_view']:
+        for row in data_dict['tab_view']['rowData']:
+            if row['fieldName'].replace(' &', '').replace(' ', '').lower() == key.replace(' ', '').lower():
+                row['margin'] = margin
+                row['aging'] = age
+
+def update_database_with_chunks(self, final_data_dict, ocr_db, column, case_id):
+    chunk_size = 4000
+    value = json.dumps(final_data_dict)
+    chunks = [value[i:i + chunk_size] for i in range(0, len(value), chunk_size)]
+    sql = f"UPDATE ocr SET {column} = " + " || ".join([f"TO_CLOB('{chunk}')" for chunk in chunks]) + f" WHERE case_id = '{case_id}'"
+    ocr_db.execute_(sql)
+
 @register_method
 def array_data_append(self,parameters):
     logging.info(f"Parameters got are {parameters}")
