@@ -172,7 +172,7 @@ def get_data(tenant_id, database, table, case_id, case_id_based=True, view='reco
             except Exception as e:
                 logging.info(f"Error occured with Exception {e}")
 
-
+            except Exception:
 
                 df = db.execute_(query)
             table_data = df.to_dict(orient= view)
@@ -262,7 +262,7 @@ def get_data_route():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("failed to start ram and time calc")
+        logging.warning("Failed to start ram and time calc")
     params = request.json
     case_id = params.get('case_id', None)
     tenant_id = params.get('tenant_id', None)
@@ -309,8 +309,8 @@ def get_data_route():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("failed to calc end of ram and time")
-            logging.exception("ram Calc went wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
 
@@ -324,7 +324,7 @@ def save_data_route():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed to  start ram and time calc")
+        logging.warning("Failed to start ram and time calc")
 
     params = request.json
     tenant_id = params.get('tenant_id', None)
@@ -357,7 +357,8 @@ def save_data_route():
         data = params.get('data', None)
         
         case_id_based = bool(params.get('case_id_based', True))
-        result = save_data(tenant_id, database, table, data, case_id, case_id_based)
+        view = params.get('view', 'records')
+        result = save_data(tenant_id, database, table, data, case_id, case_id_based, view)
 
         try:
             memory_after = measure_memory_usage()
@@ -367,9 +368,9 @@ def save_data_route():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
-            logging.warning("Failed To calc end of ram and time")
-            logging.exception("ram calc Went wrong")
+        except:
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
@@ -380,8 +381,8 @@ def partial_match_route():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
-        logging.warning("Failed to Start ram and time calc")
+    except:
+        logging.warning("Failed to start ram and time calc")
     params = request.json
     case_id = params.get('case_id', None)
     tenant_id = params.get('tenant_id', None)
@@ -421,7 +422,7 @@ def partial_match_route():
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
             logging.warning("Failed to calc end of ram and time")
-            logging.exception("ram calc went Wrong")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
 
@@ -435,7 +436,7 @@ def date_transform_route():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed to start ram and time Calc")
+        logging.warning("Failed to start ram and time calc")
     params = request.json
     tenant_id = params.get('tenant_id', None)
     case_id = params.get('case_id', None)
@@ -474,8 +475,8 @@ def date_transform_route():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to calc end of ram And time")
-            logging.exception(" ram  calc went wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}") 
@@ -574,16 +575,31 @@ def function_builder(method_string,return_var="return_data"):
 
 @app.route('/execute_business_rules',methods=['POST','GET'])
 def execute_business_rules():
+     
     try:
-        memory_before, start_time = start_resource_measurement()
+        memory_before = measure_memory_usage()
+        start_time = tt()
     except Exception:
         logging.warning("Failed to start ram and time calc")
-
+        
     data = request.json
-    case_id, tenant_id = data.get('case_id', None), data.get("tenant_id", None)
-    trace_id = case_id or data.get('rule_id', None)
+    case_id = data.get('case_id', None)
+    tenant_id = data.get("tenant_id",None)
 
-    attr = create_zipkin_attrs(trace_id, tenant_id)
+    if case_id is None:
+        rule_id = data.get('rule_id',None)
+        trace_id = rule_id
+    else:
+        trace_id = case_id
+
+    attr = ZipkinAttrs(
+        trace_id=trace_id,
+        span_id=generate_random_64bit_string(),
+        parent_span_id=None,
+        flags=None,
+        is_sampled=False,
+        tenant_id=tenant_id
+    )
 
     with zipkin_span(
             service_name='business_rules_api',
@@ -593,96 +609,78 @@ def execute_business_rules():
             port=5010,
             sample_rate=0.5):
 
-        message, _, db_config['tenant_id'] = {'flag': False}, True, tenant_id
-        _, _ = data.get('link_type', "rule"), data.get('rule_name', "")
-        
+        username = data.get('user',"")
+        flag = data.get('flag',"")
+        rule_type = data.get('link_type',"rule")
+        rule_name = data.get('rule_name',"")
+        message = {'flag':False}
 
+        return_message=""
+        return_code = True
+        db_config['tenant_id']=tenant_id
+
+        return_data="return_data"
+
+        if rule_type == "rule":
+            try:
+
+                string_python = data.get('rule',{}).get('python',"")
+                return_param = data.get('return_params',"return_data")
+                logging.info(f"############### Globals before execution: {globals().keys()}")
+                logging.info(f"############### Locals before execution: {locals().keys()}")
+                return_data=test_business_rule(string_python,return_param)
+                message = jsonify(return_data)
+
+            except Exception as e:
+                logging.info("######## Error in Executing the given Rule")
+                logging.exception(e)
+                message = {"flag":False,"message":"Error in executing the given rule"}
+                
+
+        elif rule_type == "chain":
+            try:
+                rule_seq_list = data.get("group",[])
+                if rule_seq_list:
+                    rule_seq_list.sort(key=lambda x:x['sequence'])
+                    logging.info(f"################ rule sequenced: {rule_seq_list}")
+
+
+                    for rule in rule_seq_list:
+                        logging.info(f"######### Executing rule id {rule['rule_id']}")
+
+                        fetch_code,rule = get_the_rule_from_db(rule['rule_id'])
+                        if not fetch_code:
+                            return rule
+                        execute_code,return_data=test_business_rule(rule,return_data)
+                        if not execute_code:
+                            return return_data
+                        
+                    message = {'flag':True,'data':return_data}
+
+                else:
+                    message = {"flag":False,"message":"Empty Rule list"}
+                    
+            except Exception as e:
+                    logging.info("######## Error in Executing the given Rule CHAIN")
+                    logging.exception(e)
+                    message = {"flag":False,"message":"Error in executing the given rule chain"}
+                    
         try:
-            memory_after, time_consumed, memory_consumed = end_resource_measurement(memory_before, start_time)
-            log_resource_usage(memory_after, memory_consumed, time_consumed)
+            memory_after = measure_memory_usage()
+            memory_consumed = (memory_after - memory_before) / \
+                (1024 * 1024 * 1024)
+            end_time = tt()
+            memory_consumed = f"{memory_consumed:.10f}"
+            logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
+            time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to calc End of ram and time")
-
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
+            memory_consumed = None
+            time_consumed = None
+            
+        logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(message)
-
-
-def start_resource_measurement():
-    memory_before = measure_memory_usage()
-    start_time = tt()
-    return memory_before, start_time
-
-
-def create_zipkin_attrs(trace_id, tenant_id):
-    return ZipkinAttrs(
-        trace_id=trace_id,
-        span_id=generate_random_64bit_string(),
-        parent_span_id=None,
-        flags=None,
-        is_sampled=False,
-        tenant_id=tenant_id
-    )
-
-
-def handle_rule_execution(rule_type, data):
-    if rule_type == "rule":
-        return execute_single_rule(data)
-    elif rule_type == "chain":
-        return execute_rule_chain(data)
-    return "return_data"
-
-
-def execute_single_rule(data):
-    try:
-        string_python = data.get('rule', {}).get('python', "")
-        return_param = data.get('return_params', "return_data")
-        logging.info(f"### Globals before execution: {globals().keys()}")
-        logging.info(f"### Locals before execution: {locals().keys()}")
-        return_data = test_business_rule(string_python, return_param)
-        message = jsonify(return_data)
-    except Exception as e:
-        logging.error("Error in Executing the given Rule")
-        logging.exception(e)
-        message = {"flag": False, "message": "Error in executing the rule"}
-    return message
-
-
-def execute_rule_chain(data):
-    try:
-        rule_seq_list = data.get("group", [])
-        if not rule_seq_list:
-            return {"flag": False, "message": "Empty Rule list"}
-
-        rule_seq_list.sort(key=lambda x: x['sequence'])
-        logging.info(f"### Rule sequenced: {rule_seq_list}")
-        return_data = "return_data"
-
-        for rule in rule_seq_list:
-            logging.info(f"### Executing rule id {rule['rule_id']}")
-            fetch_code, rule = get_the_rule_from_db(rule['rule_id'])
-            if not fetch_code:
-                return rule
-            execute_code, return_data = test_business_rule(rule, return_data)
-            if not execute_code:
-                return return_data
-
-        return {'flag': True, 'data': return_data}
-    except Exception as e:
-        logging.error("Error in Executing the rule chain")
-        logging.exception(e)
-        return {"flag": False, "message": "Error in Executing the rule chain"}
-
-
-def end_resource_measurement(memory_before, start_time):
-    memory_after = measure_memory_usage()
-    memory_consumed = (memory_after - memory_before) / (1024 * 1024 * 1024)
-    end_time = tt()
-    time_consumed = str(round(end_time - start_time, 3))
-    memory_consumed = f"{memory_consumed:.10f}"
-    return memory_after, time_consumed, memory_consumed
-
-
-def log_resource_usage(memory_after, memory_consumed, time_consumed):
-    logging.info(f"checkpoint memory_after - {memory_after}, memory_consumed - {memory_consumed}, time_consumed - {time_consumed}")
 
 
 @app.route('/execute_camunda_business_rules',methods=['POST','GET'])
@@ -691,7 +689,7 @@ def execute_camunda_business_rules():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed   to start ram and time calc")
+        logging.warning("Failed to start ram and time calc")
         
 
     data = request.json
@@ -740,9 +738,9 @@ def execute_camunda_business_rules():
                     
 
         except Exception as e:
-                logging.info("######## Error in Executing the given  Rule")
+                logging.info("######## Error in Executing the given Rule")
                 logging.exception(e)
-                return_data = {"flag":False,"message":"Error in executing the Given rule"}
+                return_data = {"flag":False,"message":"Error in executing the given rule"}
                 
         try:
             memory_after = measure_memory_usage()
@@ -753,8 +751,8 @@ def execute_camunda_business_rules():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to calc end Of ram and time")
-            logging.exception("ram calc went  wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
             
@@ -803,7 +801,7 @@ def execute_rule_chain(rule_chain):
 
 
     except Exception as e:
-        logging.info("######## Error in Executing the  given Rule CHAIN LOOP")
+        logging.info("######## Error in Executing the given Rule CHAIN LOOP")
         logging.exception(e)
         return jsonify({"flag":False,"message":"Error in executing the given rule chain LOOP"})
 
@@ -837,139 +835,158 @@ def test_business_rule(string_python,return_var='return_data'):
     return return_data
 
 
-
-def log_and_return(message, flag=False):
-    logging.info(message)
-    return jsonify({"flag": flag, "message": message})
-
-def process_time_and_memory(start_time, memory_before):
-    try:
-        memory_after = measure_memory_usage()
-        memory_consumed = (memory_after - memory_before) / (1024 * 1024 * 1024)
-        end_time = tt()
-        logging.info(f"checkpoint memory_after - {memory_after}, memory_consumed - {memory_consumed:.10f}, end_time - {end_time}")
-        return f"{memory_consumed:.10f}", str(round(end_time - start_time, 3))
-    except Exception:
-        logging.warning("Failed to calculate RAM and time at the end")
-        return None, None
-
-def fetch_rule_data(rule_id, business_db):
-    fetch_query = f"SELECT * FROM rule_base WHERE rule_id = '{rule_id}'"
-    rule_dict = business_db.execute(fetch_query).to_dict(orient="records")
-    if not rule_dict:
-        return {"flag": True, "data": {}}
-    
-    rule_data = process_rule_data(rule_dict[0])
-    logging.info(f"Fetched rule for {rule_id}: {rule_data}")
-    return {"flag": True, "data": rule_data}
-
-def process_rule_data(rule_data):
-    return {
-        **rule_data,
-        'rule': {
-            'xml': rule_data.pop('xml'),
-            'javascript': rule_data.pop('javascript_code'),
-            'python': rule_data.pop('python_code')
-        }
-    }
-
-def handle_rule(flag, rule_data, business_db, rule_id):
-    if flag == 'save':
-        return save_rule(rule_data, business_db, rule_id)
-    if flag == 'edit':
-        return edit_rule(rule_data, business_db, rule_id)
-    return None
-
-def save_rule(rule_data, business_db, rule_id):
-    rule_data['rule_id'] = rule_id
-    if not business_db.insert_dict(table="rule_base", data=rule_data):
-        return log_and_return("Duplicate Rule ID or Error saving the rule to DB")
-    return None
-
-def edit_rule(rule_data, business_db, rule_id):
-    business_db.update(table="rule_base", update=rule_data, where={"rule_id": rule_id})
-    return None
-
-def validate_input(data):
-    tenant_id = data.get('tenant_id')
-    rule_id = data.get('rule_id', "")
-    if not tenant_id or not rule_id:
-        return log_and_return("Please send valid request data"), None
-    return tenant_id, rule_id
-
-def validate_user_and_flag(username, flag):
-    if not username or not flag:
-        return log_and_return("Invalid user or flag")
-    return True
-
-def execute_rule(data):
-    string_python = data.get('rule', {}).get('python', "")
-    return_param = data.get('return_param', "return_data")
-    return test_business_rule(string_python, return_param)
-
-
 @app.route('/rule_builder_data',methods=['POST','GET'])
 def rule_builder_data():
-    memory_before, start_time = initialize_timing_and_memory()
-    data = request.json
-
-    # Validate input
-    error_response = validate_input(data)
-    if error_response:
-        return error_response
-
-    tenant_id, rule_id = validate_input(data)
-    trace_id = data.get('case_id') or rule_id
-    attr = ZipkinAttrs(trace_id=trace_id, span_id=generate_random_64bit_string(), parent_span_id=None, flags=None, is_sampled=False, tenant_id=tenant_id)
-
-    with zipkin_span(service_name='business_rules_api', span_name='rule_builder_data', transport_handler=http_transport, zipkin_attrs=attr, port=5010, sample_rate=0.5):
-        username = data.get('user', {}).get('username', "")
-        flag = data.get('flag', "")
-        rule_name = data.get('rule_name', "")
+    try:
+        memory_before = measure_memory_usage()
+        start_time = tt()
+    except Exception:
+        logging.warning("Failed to start ram and time calc")
         
-        # Validate user and flag
-        error_response = validate_user_and_flag(username, flag)
-        if error_response is not True:
-            return error_response
+    data = request.json
+    case_id = data.get('case_id', None)
+    tenant_id = data.get("tenant_id", None)
+    rule_id = data.get('rule_id',"")
+    
+    if case_id is None:
+        trace_id = rule_id
+    else:
+        trace_id = case_id
+    
+    attr = ZipkinAttrs(
+        trace_id=trace_id,
+        span_id=generate_random_64bit_string(),
+        parent_span_id=None,
+        flags=None,
+        is_sampled=False,
+        tenant_id=tenant_id
+    )
 
-        rule_data = {
-            'rule_name': rule_name,
-            'description': data.get('description', ""),
-            'xml': data.get('rule', {}).get('xml', ""),
-            'python_code': data.get('rule', {}).get('python', ""),
-            'javascript_code': data.get('rule', {}).get('javascript', ""),
-            'last_modified_by': username
-        }
+    with zipkin_span(
+        service_name='business_rules_api',
+        span_name='rule_builder_data',
+        transport_handler=http_transport,
+        zipkin_attrs=attr,
+        port=5010,
+        sample_rate=0.5):
+
+        username = data.get('user',"")
+        flag = data.get('flag',"")
+        
+        rule_name = data.get('rule_name',"")
+
+        if username == "" or flag == "" or rule_id == "" or tenant_id == "":
+            return jsonify({"flag":False,"message":"please send a valid request data"})
+
+        rule_base_table_dict = {}
+        rule_base_table_dict['rule_name'] = rule_name
+        rule_base_table_dict['description'] = data.get('description',"")
+        rule_base_table_dict['xml'] = data.get('rule',{}).get('xml',"")
+        rule_base_table_dict['python_code'] = data.get('rule',{}).get('python',"")
+        rule_base_table_dict['javascript_code'] = data.get('rule',{}).get('javascript',"")
+        rule_base_table_dict['last_modified_by'] = username
 
         db_config['tenant_id'] = tenant_id
         business_db = DB("business_rules", **db_config)
 
-        # Initialize return_data to None
-        return_data = None
+        if flag == "save":
 
-        # Handle rule based on flag
-        if flag in ['save', 'edit']:
-            result = handle_rule(flag, rule_data, business_db, rule_id)
-            if result:
-                return result
+            rule_base_table_dict['rule_id'] = rule_id
+            rule_base_table_dict['created_by'] = username
+            try:
+
+                return_state = business_db.insert_dict(table="rule_base",data=rule_base_table_dict)
+
+                if return_state == False:
+                    logging.info("######## Duplicate  Rule Id or Error in Saving to Rule Base Table")
+                    
+                    return_data = {"flag":False,"message":"Duplicate Rule Id or Error in Saving the Rule to DB"}
+                    
+            except Exception as e:
+                logging.info("######## Error in Saving to Rule Base Table")
+                logging.exception(e)
+                return_data = {"flag":False,"message":"Error in Saving the Rule to DB"}
+                
+
+        elif flag == 'edit':
+
+            try:
+
+                business_db.update(table="rule_base",update=rule_base_table_dict,where={"rule_id":rule_id})
+
+            except Exception as e:
+                logging.info("######## Error in Updating to Rule Base Table")
+                logging.exception(e)
+                return_data = {"flag":False,"message":"Error in Updating the Rule to DB"}
+                
+
+
         elif flag == 'fetch':
-            return_data = fetch_rule_data(rule_id, business_db)
+
+            try:
+
+                fetch_query = f"select * from rule_base where rule_id = '{rule_id}'"
+                rule_dict = business_db.execute(fetch_query).to_dict(orient="records")
+
+                if len(rule_dict)>0:
+
+                    rule_dict[0]['rule']={}
+                    rule_dict[0]['rule']['xml'] = rule_dict[0]['xml']
+                    rule_dict[0].pop('xml')
+
+                    rule_dict[0]['rule']['javascript'] = rule_dict[0]['javascript_code']
+                    rule_dict[0].pop('javascript_code')
+                    rule_dict[0]['rule']['python'] = rule_dict[0]['python_code']
+                    rule_dict[0].pop('python_code')
+
+
+                    logging.info(f"############# Fetch rule for {rule_id} is {rule_dict[0]}")
+
+                    return_data = {"flag":True,"data":rule_dict[0]}
+                    
+
+                else:
+                    logging.info("######## Empty Data from Rule Base Table")
+                    return_data = {"flag":True,"data":{}}
+                    
+
+
+            except Exception as e:
+                logging.info("######## Error in Fetching to Rule Base Table")
+                logging.exception(e)
+                return_data = {"flag":False,"message":"Error in Fetching the Rule to DB"}
+                
         elif flag == 'execute':
-            return_data = execute_rule(data)
+            try:
 
-    memory_consumed, time_consumed = process_time_and_memory(start_time, memory_before)
-    logging.info(f"BR Time and RAM checkpoint: Time consumed: {time_consumed}, RAM consumed: {memory_consumed}")
+                string_python = data.get('rule',{}).get('python',"")
+                return_param = data.get('return_param',"return_data")
+                return_data = test_business_rule(string_python,return_param)
+                
 
-    return jsonify(return_data)
 
-def initialize_timing_and_memory():
-    try:
-        memory_before = measure_memory_usage()
-        start_time = tt()
-        return memory_before, start_time
-    except Exception:
-        logging.warning("Failed to start RAM and time calculation")
-        return None, None
+            except Exception as e:
+                logging.info("######## Error in Executing the given Rule")
+                logging.exception(e)
+                return_data = {"flag":False,"message":"Error in executing the given rule"}
+                
+        try:
+            memory_after = measure_memory_usage()
+            memory_consumed = (memory_after - memory_before) / \
+                (1024 * 1024 * 1024)
+            end_time = tt()
+            memory_consumed = f"{memory_consumed:.10f}"
+            logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
+            time_consumed = str(round(end_time-start_time,3))
+        except Exception:
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
+            memory_consumed = None
+            time_consumed = None
+            
+
+        logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
+        return jsonify(return_data)
 
 
 def insert_or_update_chain_linker(database,table,data_dict):
@@ -985,14 +1002,13 @@ def insert_or_update_chain_linker(database,table,data_dict):
 
             
 
+            where_dict = {
+                'group_id': data_dict['group_id'],
+                'rule_id': data_dict['rule_id'],
+                'sequence': data_dict['sequence'],
+                'link_type': data_dict['link_type'],
+            }
             
-
-
-
-
-
-
-
             data_dict.pop('created_by')
 
 
@@ -1071,7 +1087,7 @@ def get_routes():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed to start ram And time calc")
+        logging.warning("Failed to start ram and time calc")
         
     data = request.json
     tenant_id = data.get('tenant_id', None)
@@ -1122,8 +1138,8 @@ def get_routes():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to   calc end of ram and time")
-            logging.exception("  ram calc went   wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
             
@@ -1138,7 +1154,7 @@ def get_rule_from_id():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed to start ram and Time calc")
+        logging.warning("Failed to start ram and time calc")
         
 
     data = request.json
@@ -1192,8 +1208,8 @@ def get_rule_from_id():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to calc end of ram   and time")
-            logging.exception("Ram   calc went wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
             
@@ -1233,7 +1249,7 @@ def check_function_builder():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed TO start ram and time calc")
+        logging.warning("Failed to start ram and time calc")
         
 
     data = request.json
@@ -1277,8 +1293,8 @@ def check_function_builder():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("Failed to calc end of ram and   time")
-            logging.exception("ram calc Went   wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
             
@@ -1287,39 +1303,75 @@ def check_function_builder():
         return jsonify({"flag":True,"message":"message"})
 
 
-def get_data_sources(business_rules_db, case_id, column_name, master_data_columns=None, master=False):
+def get_data_sources(business_rules_db, case_id, column_name, master_data_columns={}, master=False):
     """Helper to get all the required table data for the business rules to apply"""
     
-    if master_data_columns is None:
-        master_data_columns = {}
+    get_datasources_query = "SELECT * from `data_sources`"
+    data_sources = business_rules_db.execute_(get_datasources_query)
 
-    def fetch_data(db, table, case_id, columns_list=None):
-        query = f"SELECT {columns_list or '*'} from {table}"
-        params = [case_id] if not master else []
-        df = db.execute_(query, params=params)
-        return df.to_dict(orient='records') if not df.empty else {}
-
-    # Retrieve data sources
-    data_sources = business_rules_db.execute_("SELECT * from data_sources")
+    # Load sources
     sources = json.loads(list(data_sources[column_name])[0]) if data_sources[column_name] else {}
-
     logging.info(f"sources: {sources}")
-    if not sources:
-        return {}, sources  # Early return if no sources
 
     data = {}
-    # Process data sources
+
+    if sources: ### Process only if sources has some data
+        for database, tables in sources.items():
+            db = DB(database, **db_config)
+            for table in tables:
+                if master:
+                    if master_data_columns:
+                        for table_name, columns_list in master_data_columns.items():
+                            if table == table_name:
+                                columns_list = ', '. join(columns_list)
+                                query = f"SELECT {columns_list} from `{table}`"
+                                df = db.execute_(query)
+                    else:
+                        query = f"SELECT * from `{table}`"
+                        df = db.execute_(query)
+                        
+                    data[table] = df.to_dict(orient='records')
+                else:
+                    query = f"SELECT * from `{table}` WHERE case_id = %s"
+                    params = [case_id]
+                    df = db.execute_(query, params=params)
+                    #logging.info(f"got data is {df}")
+                    if not df.empty:
+                        data[table] = df.to_dict(orient='records')[0]
+                    else:
+                        data[table] = {}
+        
+        
+        
+
+
+    # Early return if sources are empty
+    if not sources:
+        return data, sources
+
     for database, tables in sources.items():
         db = DB(database, **db_config)
         for table in tables:
-            columns_list = ', '.join(master_data_columns.get(table, ['*'])) if master else None
-            data[table] = fetch_data(db, table, case_id, columns_list)
+            if master and master_data_columns:
+                columns_list = ', '.join(master_data_columns.get(table, ['*']))
+                query = f"SELECT {columns_list} from `{table}`"
+            else:
+                query = f"SELECT * from `{table}`" if master else f"SELECT * from `{table}` WHERE case_id = %s"
+            
+            params = [case_id] if not master else []
+            df = db.execute_(query, params=params)
 
+            # Add data to the dictionary based on query result
+            if not df.empty:
+                data[table] = df.to_dict(orient='records') if master else df.to_dict(orient='records')[0]
+            else:
+                data[table] = {}
+
+    _ = json.loads(list(data_sources['case_id_based'])[0])
     return data, sources
 
 
-
-def function_check(tenant_id, case_id, rule_list, data_tables, return_vars):
+def function_check(tenant_id, case_id, rule_list, data_tables, update_table_sources, return_vars):
     if len(rule_list)>0:
         BR = BusinessRules(case_id, rule_list, data_tables)
         BR.tenant_id = tenant_id
@@ -1329,7 +1381,7 @@ def function_check(tenant_id, case_id, rule_list, data_tables, return_vars):
             
         if BR.changed_fields:
             updates = BR.changed_fields
-            BR.update_tables(updates,data_tables)
+            BR.update_tables(updates, data_tables, update_table_sources)
         logging.info(f"###### Return Data {return_data}")
         
     else:
@@ -1340,60 +1392,27 @@ def function_check(tenant_id, case_id, rule_list, data_tables, return_vars):
 def run_business_rule():
     try:
         memory_before = measure_memory_usage()
+        start_time = tt()
     except Exception:
         logging.warning("Failed to start ram and time calc")
-
+        
     data = request.json
+
     logging.info(f"######## Running business with the data: {data}")
 
-    case_id, rule_id, tenant_id, user, session_id = extract_initial_data(data)
-    trace_id = rule_id if case_id is None else case_id
-
-    if not user or not session_id:
-        user, session_id = extract_ui_data(data)
-
-    attr = create_zipkin_attributes(trace_id, tenant_id)
-
-    with zipkin_span(
-        service_name='business_rules_api',
-        span_name='run_business_rule',
-        transport_handler=http_transport,
-        zipkin_attrs=attr,
-        port=5010,
-        sample_rate=0.5):
-        business_rules_db = DB('business_rules',**db_config)
-        # Extract required data
-        return_vars, field_changes, master_data_columns, master_data_require = extract_additional_data(data)
-
-        # Validate case_id, tenant_id, and rule_id
-        if not validate_input(case_id, tenant_id, rule_id):
-            return jsonify({"flag": False, "message": "Please provide valid case_id, tenant_id and rule_id"})
-
-        # Fetch data from sources
-        data_tables, _ = process_data_sources(business_rules_db, case_id, master_data_require, master_data_columns)
-
-        # Execute business rules and return data
-        response_data = execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes)
-
-        # Log memory usage and time
-        log_memory_usage(memory_before)
-
-        return jsonify(response_data)
-
-def extract_initial_data(data):
-    case_id = data.get("case_id", None)
-    rule_id = data.get("rule_id", "")
-    tenant_id = data.get("tenant_id", None)
+    case_id = data.get("case_id",None)
+    rule_id = data.get("rule_id","")
+    tenant_id = data.get("tenant_id",None)
     user = data.get('user', None)
     session_id = data.get('session_id', None)
-    return case_id, rule_id, tenant_id, user, session_id
 
-def extract_ui_data(data):
-    ui_data = data.get('ui_data', {'user': None, 'session_id': None})
-    return ui_data['user'], ui_data['session_id']
+    trace_id = rule_id if case_id is None else case_id
+    if (user is None) or (session_id is None):
+        ui_data = data.get('ui_data', {'user':None,'session_id':None})
+        user = ui_data['user']
+        session_id = ui_data['session_id']
 
-def create_zipkin_attributes(trace_id, tenant_id):
-    return ZipkinAttrs(
+    attr = ZipkinAttrs(
         trace_id=trace_id,
         span_id=generate_random_64bit_string(),
         parent_span_id=None,
@@ -1402,96 +1421,163 @@ def create_zipkin_attributes(trace_id, tenant_id):
         tenant_id=tenant_id
     )
 
-def extract_additional_data(data):
-    return_vars = data.get("return_vars", "")
-    field_changes = data.get('ui_data', {}).get('field_changes', [])
-    master_data_require = data.get('master_data_require', 'False')
-    master_data_columns = data.get('master_data_columns', {})
-    if master_data_columns:
-        master_data_columns = ast.literal_eval(master_data_columns)
-    return return_vars, field_changes, master_data_columns, master_data_require
+    with zipkin_span(
+        service_name='business_rules_api',
+        span_name='run_business_rule',
+        transport_handler=http_transport,
+        zipkin_attrs=attr,
+        port=5010,
+        sample_rate=0.5):
 
-def validate_input(case_id, tenant_id, rule_id):
-    return not (case_id == "" or tenant_id == "" or rule_id == "")
+        return_vars = data.get("return_vars","")
+        field_changes = ui_data.get('field_changes', [])
+        master_data_require = data.get('master_data_require', 'False')
+        master_data_columns = data.get('master_data_columns', {})
+        if master_data_columns:
+            master_data_columns = ast.literal_eval(master_data_columns)
 
-def process_data_sources(business_rules_db, case_id, master_data_require, master_data_columns):
-    case_id_data_tables, case_id_sources = get_data_sources(business_rules_db, case_id, 'case_id_based')
+        if case_id=="" or tenant_id=="" or rule_id=="":
+            return jsonify({"flag":False,"message":"Please provide valid case_id,tenant_id and rule_id "})
 
-    if master_data_require == 'True':
-        master_data_tables, master_data_sources = get_data_sources(
-            business_rules_db, case_id, 'master', master_data_columns, master=True)
-    else:
-        master_data_tables, master_data_sources = {}, {}
+        db_config['tenant_id'] = tenant_id
+        business_rules_db = DB('business_rules', **db_config)
 
-    logging.info(f"case_id_sources: {case_id_sources}")
-    logging.info(f"master_data_tables: {master_data_tables}")
-    logging.info(f"master_data_sources: {master_data_sources}")
+        case_id_data_tables, case_id_sources = get_data_sources(business_rules_db, case_id, 'case_id_based') 
+        if master_data_require == 'True':
+            master_data_tables, master_data_sources = get_data_sources(business_rules_db, case_id, 'master', master_data_columns, master=True)
+        else:
+            master_data_tables, master_data_sources = {}, {}
 
-    data_tables = {**case_id_data_tables, **master_data_tables}
-    update_table_sources = merge_data_sources(case_id_sources, master_data_sources)
-
-    return data_tables, update_table_sources
-
-def merge_data_sources(case_id_sources, master_data_sources):
-    update_table_sources = {}
-
-    for key in case_id_sources:
-        update_table_sources[key] = case_id_sources[key] + master_data_sources.get(key, [])
-    
-    for key in master_data_sources:
-        if key not in update_table_sources:
-            update_table_sources[key] = master_data_sources[key]
-
-    logging.info(f"update_table_sources: {update_table_sources}")
-    return update_table_sources
-
-def execute_business_rules(data_tables, case_id, rule_id, return_vars, field_changes):
-    try:
-        rule_id = ast.literal_eval(rule_id) if return_vars == '' else rule_id
-    except Exception:
-        pass
-    business_rules_db = DB('business_rules',**db_config)
-    rule_list = fetch_rule_list(business_rules_db, rule_id)
-    response_data = evaluate_rules(rule_list, case_id, data_tables, field_changes, return_vars)
-
-    return response_data
-
-def fetch_rule_list(business_rules_db, rule_id):
-    if isinstance(rule_id, list) and len(rule_id) == 1:
-        rule_id = rule_id[0]
-        query = f"select python_code from rule_base where rule_id='{rule_id}'"
-    else:
-        rule_id = tuple(rule_id) if isinstance(rule_id, list) else rule_id
-        query = f"select python_code from rule_base where rule_id in {rule_id}"
-    
-    return business_rules_db.execute_(query)
-
-def evaluate_rules(rule_list, case_id, data_tables, field_changes, return_vars):
-    response_data = {}
-    data = request.json
-    for i, python_code in enumerate(rule_list['python_code']):
-        BR = BusinessRules(case_id, python_code, data_tables)
-        BR.tenant_id = data.get('tenant_id')
-        BR.return_vars = return_vars
-        BR.field_changes = field_changes
-
-        return_data = BR.evaluate_rule(python_code)
-
-        if BR.changed_fields:
-            BR.update_tables(BR.changed_fields,data_tables)
-            logging.info(f"updates: {BR.changed_fields}")
-        response_data = {"flag": True, "data": return_data}
         
-    return response_data
+        logging.info(f"case_id_sources: {case_id_sources}")
+        logging.info(f"master_data_tables: {master_data_tables}")
+        logging.info(f"master_data_sources: {master_data_sources}")
 
-def log_memory_usage(memory_before):
-    try:
-        memory_after = measure_memory_usage()
-        memory_consumed = (memory_after - memory_before) / (1024 * 1024 * 1024)
-        memory_consumed = f"{memory_consumed:.10f}"
-        logging.info(f"Memory consumed: {memory_consumed}")
-    except Exception:
-        logging.warning("Failed to calculate memory and time")
+        data_tables = {**case_id_data_tables, **master_data_tables}
+        
+        try:
+            logging.info("Comes to if block")
+            update_table_sources = {}
+
+            for key in case_id_sources:
+                if key in master_data_sources:
+                    update_table_sources[key] = case_id_sources[key] + master_data_sources[key]
+                else:
+                    update_table_sources[key] = case_id_sources[key]
+
+            for key in master_data_sources:
+                if key not in update_table_sources:
+                    update_table_sources[key] = master_data_sources[key]
+        except Exception:
+            logging.info("Comes to except block")
+            update_table_sources = {**case_id_sources, **master_data_sources}
+
+        logging.info(f"update_table_sources: {update_table_sources}")
+
+
+        
+        try:
+            if return_vars=='':
+                try:
+                    rule_id = ast.literal_eval(rule_id)
+                except Exception:
+                    rule_id = rule_id
+
+                if len(rule_id)==1:
+                    rule_id = rule_id[0]
+                    query = f"select python_code from rule_base where rule_id='{rule_id}'"
+                    rule_list = business_rules_db.execute_(query)
+                else:
+                    rule_id = tuple(rule_id)
+                    query = f'select python_code from rule_base where rule_id in {rule_id}'
+                    rule_list = business_rules_db.execute_(query)
+
+                logging.info(rule_list)
+                for i in range(len(rule_list)):
+                    BR = BusinessRules(case_id, rule_list['python_code'][i], data_tables)
+                    BR.tenant_id = tenant_id
+                    BR.return_vars=return_vars
+                    BR.field_changes=field_changes
+                    BR.cus_table=''
+                    return_data = BR.evaluate_rule(rule_list['python_code'][i])
+                    logging.info(return_data)        
+                    if BR.changed_fields:
+                        updates = BR.changed_fields
+                        logging.info(f"updates: {updates}")
+                        BR.update_tables(updates, data_tables, update_table_sources)
+
+                    logging.info(f"###### Return Data {return_data}")
+                        
+                    
+                return_data={"message": "Successfully executed business rules"}
+
+                response_data = {
+                    "flag": True,
+                    "data": return_data
+                }
+                
+            else:
+                try:
+                    rule_id = ast.literal_eval(rule_id)
+                except Exception:
+                    rule_id = rule_id
+                business_rules_db = DB('business_rules', **db_config)
+                logging.info(f'Rule id is {rule_id}')
+                query = f"select python_code from rule_base where rule_id='{rule_id}'"
+                rule_list = business_rules_db.execute_(query)['python_code'][0]
+                BR = BusinessRules(case_id, rule_list, data_tables)
+                BR.tenant_id = tenant_id
+                BR.field_changes=field_changes
+                BR.return_vars=return_vars
+                BR.cus_table=''
+
+                return_data = BR.evaluate_rule(rule_list)
+
+                if BR.changed_fields:
+                    updates = BR.changed_fields
+                    BR.update_tables(updates, data_tables, update_table_sources)
+                    logging.info(f"###### Return Data {return_data}")
+                    
+                    response_data = {'flag':True,'data':return_data}
+                else:
+                    logging.info(f"###### Return Data {return_data}")
+                    
+                    response_data = {'flag':True,'data':return_data}
+
+
+        except Exception as e:
+            logging.info(e)
+            response_data={
+                'flag': False,
+                'message': 'Something went wrong in executing business rules',
+                'data':{}
+            }
+            
+        try:
+            memory_after = measure_memory_usage()
+            memory_consumed = (memory_after - memory_before) / \
+                (1024 * 1024 * 1024)
+            end_time = tt()
+            memory_consumed = f"{memory_consumed:.10f}"
+            logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
+            
+        except Exception:
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
+            memory_consumed = None
+            time_consumed = None
+            
+
+        # insert audit
+        """audit_data = {"tenant_id": tenant_id, "user": user, "case_id": case_id, 
+                        "api_service": "run_business_rule", "service_container": "business_rules_api", "changed_data": None,
+                        "tables_involved": "","memory_usage_gb": str(memory_consumed), 
+                        "time_consumed_secs": time_consumed, "request_payload": json.dumps(data), 
+                        "response_data": json.dumps(response_data['data']), "trace_id": trace_id, "session_id": session_id,"status":str(response_data['flag'])}
+        insert_into_audit(case_id, audit_data)
+
+        logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")"""
+        return jsonify(response_data)
 
 
 @app.route('/get_ui_rules', methods=['POST', 'GET'])
@@ -1500,7 +1586,7 @@ def get_ui_rules():
         memory_before = measure_memory_usage()
         start_time = tt()
     except Exception:
-        logging.warning("Failed to start ram  and time calc")
+        logging.warning("Failed to start ram and time calc")
         
     data = request.json
     case_id = data.get('case_id', None)
@@ -1556,8 +1642,8 @@ def get_ui_rules():
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
         except Exception:
-            logging.warning("failed to Calc end of ram and time")
-            logging.exception("Ram calc went wrong")
+            logging.warning("Failed to calc end of ram and time")
+            logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
             
