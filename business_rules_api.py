@@ -41,7 +41,7 @@ def measure_memory_usage():
     memory_info = process.memory_info()
     return memory_info.rss  # Resident Set Size (RSS) in bytes
 
-def insert_into_audit(data):
+def insert_into_audit(case_id, data):
     tenant_id = data.pop('tenant_id')
     db_config['tenant_id'] = tenant_id
     stats_db = DB('stats', **db_config)
@@ -117,7 +117,7 @@ def date_transform(date, input_format='dd-mm-yyyy', output_format='dd-mm-yyyy'):
     try:
         input_format_ = date_format_mapping[input_format]
         output_format_ = date_format_mapping[output_format]
-    except Exception:
+    except:
         input_format_ = '%d-%m-%Y'
         output_format_ = '%d-%m-%Y'
         
@@ -133,7 +133,7 @@ def date_transform(date, input_format='dd-mm-yyyy', output_format='dd-mm-yyyy'):
     try:
         try:
             converted_date = pd.to_datetime(date_series, format=input_format_, errors='coerce').dt.strftime(output_format_)
-        except Exception:
+        except:
             converted_date = pd.to_datetime(date_series, format=input_format_,errors='coerce',utc=True).dt.strftime(output_format_)
 
         logging.info(f"Got converted date is : {converted_date}")
@@ -168,12 +168,7 @@ def get_data(tenant_id, database, table, case_id, case_id_based=True, view='reco
             query = f"SELECT * from `{table}` WHERE `case_id` = '{case_id}'"
             try:
                 df = db.execute(query)
-
-            except Exception as e:
-                logging.info(f"Error occured with Exception {e}")
-
-            except Exception:
-
+            except:
                 df = db.execute_(query)
             table_data = df.to_dict(orient= view)
             result['flag'] = True
@@ -189,13 +184,13 @@ def get_data(tenant_id, database, table, case_id, case_id_based=True, view='reco
             result['flag'] = True
             result['data'] = {"value":table_data}
     except Exception as e:
-        logging.error("Failed in getting tables data from database")
+        logging.error(f"Failed in getting tables data from database")
         logging.error(e)
         result['flag'] = 'False'
         result['data'] = {'reason':'Failed in getting tables data from database','error_msg':str(e)}
     return result
 
-def save_data(tenant_id, database, table, data, case_id, case_id_based=True):
+def save_data(tenant_id, database, table, data, case_id, case_id_based=True, view='records'):
     """Util for saving the data into database
     
     Args:
@@ -218,33 +213,33 @@ def save_data(tenant_id, database, table, data, case_id, case_id_based=True):
     result = {}
     
     if case_id_based:
-        logging.info("data to save is case_id based data.")
+        logging.info(f"data to save is case_id based data.")
         try:
             db_config['tenant_id'] = tenant_id
             connected_db = DB(database, **db_config) # only in ocr or process_queue we are updating
             connected_db.update(table, update=data, where={'case_id':case_id})
         except Exception as e:
-            logging.error("Cannot update the database")
+            logging.error(f"Cannot update the database")
             logging.error(e)
             result["flag"]=False,
-            result['data'] = {"reason":f"Cannot update the database, error_msg:{str(e)}"}
+            result['data'] = {'reason':f'Cannot update the database','error_msg':str(e)}
             return result
         result['flag']=True
         result['data']= data
         return result
 
     else:
-        logging.info("data to save is master based data.")
+        logging.info(f"data to save is master based data.")
         try:
             db_config['tenant_id'] = tenant_id
             connected_db = DB(database, **db_config) # only in ocr or process_queue we are updating
             logging.info('************** have to develop due to where clause condition not getting from data *******')
             connected_db.update(table, update=data, where={'case_id':case_id})
         except Exception as e:
-            logging.error("Cannot update the database")
+            logging.error(f"Cannot update the database")
             logging.error(e)
             result['flag']=False
-            result['data'] = {"reason":f"Cannot update the database, error_msg:{str(e)}"}
+            result['data'] = {'reason':f'Cannot update the database','error_msg':str(e)}
         
         result['flag']=True
         result['data']= data  
@@ -261,8 +256,9 @@ def get_data_route():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
+        pass
     params = request.json
     case_id = params.get('case_id', None)
     tenant_id = params.get('tenant_id', None)
@@ -308,11 +304,12 @@ def get_data_route():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
+            pass
 
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
 
@@ -323,8 +320,9 @@ def save_data_route():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
+        pass
 
     params = request.json
     tenant_id = params.get('tenant_id', None)
@@ -355,6 +353,7 @@ def save_data_route():
         database = params.get('database', None)
         table = params.get('table', None)
         data = params.get('data', None)
+        # data = json.dumps(data)
         
         case_id_based = bool(params.get('case_id_based', True))
         view = params.get('view', 'records')
@@ -373,7 +372,9 @@ def save_data_route():
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
+
         return jsonify(result)
 
 @app.route('/partial_match', methods=['POST', 'GET'])
@@ -383,6 +384,7 @@ def partial_match_route():
         start_time = tt()
     except:
         logging.warning("Failed to start ram and time calc")
+        pass
     params = request.json
     case_id = params.get('case_id', None)
     tenant_id = params.get('tenant_id', None)
@@ -410,6 +412,7 @@ def partial_match_route():
 
         input_string = params.get('input_string', None)
         matchable_strings = params.get('matchable_strings', [])
+        threshold = params.get('threshold', 75)
         result = partial_match(input_string, matchable_strings, threshold=75)
 
         try:
@@ -420,11 +423,12 @@ def partial_match_route():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
+            pass
 
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
 
@@ -435,8 +439,9 @@ def date_transform_route():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
+        pass
     params = request.json
     tenant_id = params.get('tenant_id', None)
     case_id = params.get('case_id', None)
@@ -464,6 +469,8 @@ def date_transform_route():
         sample_rate=0.5):
 
         date = params.get('date', None)
+        input_format = params.get('input_format', 'dd-mm-yyyy')
+        output_format = params.get('output_format', 'dd-mm-yyyy')
         result = date_transform(date, input_format='dd-mm-yyyy', output_format='dd-mm-yyyy')
 
         try:
@@ -474,11 +481,12 @@ def date_transform_route():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}") 
         return jsonify(result)
 
@@ -494,19 +502,6 @@ def assign_route():
 
     return jsonify(key_value_data)
     
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class Blockly(object):
@@ -530,7 +525,7 @@ class Blockly(object):
 
                 return True,return_data
             except Exception as e:
-                logging.info("###### Error in executing Python Code")
+                logging.info(f"###### Error in executing Python Code")
                 logging.exception(e)
                 return False,str(e)
 
@@ -549,8 +544,8 @@ def function_builder(method_string,return_var="return_data"):
 
     def fun():
         try:
-            
-            
+            # return_data=return_var
+
             logging.info(f"####### Function builder calling: {method_string}")
             
             exec(method_string,globals(),globals())
@@ -565,7 +560,7 @@ def function_builder(method_string,return_var="return_data"):
 
             return True,return_dict
         except Exception as e:
-            logging.info("###### Error in executing Python Code")
+            logging.info(f"###### Error in executing Python Code")
             logging.exception(e)
             return False,str(e)
 
@@ -579,9 +574,9 @@ def execute_business_rules():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
     data = request.json
     case_id = data.get('case_id', None)
     tenant_id = data.get("tenant_id",None)
@@ -630,12 +625,13 @@ def execute_business_rules():
                 logging.info(f"############### Locals before execution: {locals().keys()}")
                 return_data=test_business_rule(string_python,return_param)
                 message = jsonify(return_data)
+                #return jsonify(return_data)
 
             except Exception as e:
                 logging.info("######## Error in Executing the given Rule")
                 logging.exception(e)
                 message = {"flag":False,"message":"Error in executing the given rule"}
-                
+                #return jsonify({"flag":False,"message":"Error in executing the given rule"})
 
         elif rule_type == "chain":
             try:
@@ -644,7 +640,7 @@ def execute_business_rules():
                     rule_seq_list.sort(key=lambda x:x['sequence'])
                     logging.info(f"################ rule sequenced: {rule_seq_list}")
 
-
+                    # return_data = execute_rule_chain(rule_seq_list)
                     for rule in rule_seq_list:
                         logging.info(f"######### Executing rule id {rule['rule_id']}")
 
@@ -654,17 +650,17 @@ def execute_business_rules():
                         execute_code,return_data=test_business_rule(rule,return_data)
                         if not execute_code:
                             return return_data
-                        
+                    #return jsonify({'flag':True,'data':return_data})
                     message = {'flag':True,'data':return_data}
 
                 else:
                     message = {"flag":False,"message":"Empty Rule list"}
-                    
+                    #return jsonify({"flag":False,"message":"Empty Rule list"})
             except Exception as e:
                     logging.info("######## Error in Executing the given Rule CHAIN")
                     logging.exception(e)
                     message = {"flag":False,"message":"Error in executing the given rule chain"}
-                    
+                    #return jsonify({"flag":False,"message":"Error in executing the given rule chain"})
         try:
             memory_after = measure_memory_usage()
             memory_consumed = (memory_after - memory_before) / \
@@ -673,12 +669,12 @@ def execute_business_rules():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(message)
 
@@ -688,9 +684,9 @@ def execute_camunda_business_rules():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
 
     data = request.json
     case_id = data.get('case_id', None)
@@ -750,12 +746,12 @@ def execute_camunda_business_rules():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
         
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(return_data)
@@ -777,7 +773,7 @@ def get_the_rule_from_db(rule_id):
         else:
             return False,"No Rule for given Rule ID"
 
-    except Exception:
+    except Exception as e:
 
         return False,"Error in fetching rule from DB"
 
@@ -840,9 +836,9 @@ def rule_builder_data():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
     data = request.json
     case_id = data.get('case_id', None)
     tenant_id = data.get("tenant_id", None)
@@ -978,12 +974,12 @@ def rule_builder_data():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
 
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(return_data)
@@ -1011,7 +1007,7 @@ def insert_or_update_chain_linker(database,table,data_dict):
             
             data_dict.pop('created_by')
 
-
+            update_status = database.update(table='chain_linker',update=data_dict,where=where_dict)
 
         return True
 
@@ -1023,10 +1019,10 @@ def insert_or_update_chain_linker(database,table,data_dict):
 
 def chain_linker_db_logic(request_data,database):
 
-    
+    tenant_id = request_data.get("tenant_id","")
 
     username = request_data.get('user',"")
-    
+    flag = request_data.get('flag',"")
     group_id = request_data.get('group_id',"")
     
     group_list = request_data.get('group',[])
@@ -1086,9 +1082,9 @@ def get_routes():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
     data = request.json
     tenant_id = data.get('tenant_id', None)
     case_id = data.get('case_id', None)
@@ -1118,7 +1114,7 @@ def get_routes():
         business_rules_db = DB('business_rules',**db_config)
 
         try:
-            fetch_query = "select rule_id,rule_name,description as rule_description from rule_base"
+            fetch_query = f"select rule_id,rule_name,description as rule_description from rule_base"
             rule_list = business_rules_db.execute_(fetch_query).to_dict(orient='records')
 
             return_data = {'flag':True,'data':rule_list}
@@ -1137,12 +1133,12 @@ def get_routes():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(return_data)
 
@@ -1153,9 +1149,9 @@ def get_rule_from_id():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
 
     data = request.json
     tenant_id = data.get('tenant_id', None)
@@ -1207,12 +1203,12 @@ def get_rule_from_id():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
 
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(return_data)
@@ -1248,9 +1244,9 @@ def check_function_builder():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
 
     data = request.json
     tenant_id = data.get('tenant_id', None)
@@ -1292,29 +1288,31 @@ def check_function_builder():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
 
         return jsonify({"flag":True,"message":"message"})
 
 
 def get_data_sources(business_rules_db, case_id, column_name, master_data_columns={}, master=False):
-    """Helper to get all the required table data for the business rules to apply"""
-    
+    """Helper to get all the required table data for the businesss rules to apply
+    """
     get_datasources_query = "SELECT * from `data_sources`"
     data_sources = business_rules_db.execute_(get_datasources_query)
 
-    # Load sources
-    sources = json.loads(list(data_sources[column_name])[0]) if data_sources[column_name] else {}
+    # sources
+    sources={}
+    # if data_sources[column_name] != "":
+    sources = json.loads(list(data_sources[column_name])[0])
     logging.info(f"sources: {sources}")
-
+    
+    
     data = {}
-
     if sources: ### Process only if sources has some data
         for database, tables in sources.items():
             db = DB(database, **db_config)
@@ -1342,33 +1340,10 @@ def get_data_sources(business_rules_db, case_id, column_name, master_data_column
                         data[table] = {}
         
         
-        
-
-
-    # Early return if sources are empty
-    if not sources:
-        return data, sources
-
-    for database, tables in sources.items():
-        db = DB(database, **db_config)
-        for table in tables:
-            if master and master_data_columns:
-                columns_list = ', '.join(master_data_columns.get(table, ['*']))
-                query = f"SELECT {columns_list} from `{table}`"
-            else:
-                query = f"SELECT * from `{table}`" if master else f"SELECT * from `{table}` WHERE case_id = %s"
-            
-            params = [case_id] if not master else []
-            df = db.execute_(query, params=params)
-
-            # Add data to the dictionary based on query result
-            if not df.empty:
-                data[table] = df.to_dict(orient='records') if master else df.to_dict(orient='records')[0]
-            else:
-                data[table] = {}
-
-    _ = json.loads(list(data_sources['case_id_based'])[0])
+        case_id_based_sources = json.loads(list(data_sources['case_id_based'])[0])
+    
     return data, sources
+
 
 
 def function_check(tenant_id, case_id, rule_list, data_tables, update_table_sources, return_vars):
@@ -1393,9 +1368,9 @@ def run_business_rule():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
     data = request.json
 
     logging.info(f"######## Running business with the data: {data}")
@@ -1468,8 +1443,8 @@ def run_business_rule():
             for key in master_data_sources:
                 if key not in update_table_sources:
                     update_table_sources[key] = master_data_sources[key]
-        except Exception:
-            logging.info("Comes to except block")
+        except:
+            logging.info(f"Comes to except block")
             update_table_sources = {**case_id_sources, **master_data_sources}
 
         logging.info(f"update_table_sources: {update_table_sources}")
@@ -1480,7 +1455,7 @@ def run_business_rule():
             if return_vars=='':
                 try:
                     rule_id = ast.literal_eval(rule_id)
-                except Exception:
+                except:
                     rule_id = rule_id
 
                 if len(rule_id)==1:
@@ -1519,7 +1494,7 @@ def run_business_rule():
             else:
                 try:
                     rule_id = ast.literal_eval(rule_id)
-                except Exception:
+                except:
                     rule_id = rule_id
                 business_rules_db = DB('business_rules', **db_config)
                 logging.info(f'Rule id is {rule_id}')
@@ -1560,13 +1535,13 @@ def run_business_rule():
             end_time = tt()
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
-            
-        except Exception:
+            time_consumed = str(round(end_time-start_time,3))
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
 
         # insert audit
         """audit_data = {"tenant_id": tenant_id, "user": user, "case_id": case_id, 
@@ -1585,9 +1560,9 @@ def get_ui_rules():
     try:
         memory_before = measure_memory_usage()
         start_time = tt()
-    except Exception:
+    except:
         logging.warning("Failed to start ram and time calc")
-        
+        pass
     data = request.json
     case_id = data.get('case_id', None)
     tenant_id = data.get("tenant_id", None)
@@ -1641,12 +1616,12 @@ def get_ui_rules():
             memory_consumed = f"{memory_consumed:.10f}"
             logging.info(f"checkpoint memory_after - {memory_after},memory_consumed - {memory_consumed}, end_time - {end_time}")
             time_consumed = str(round(end_time-start_time,3))
-        except Exception:
+        except:
             logging.warning("Failed to calc end of ram and time")
             logging.exception("ram calc went wrong")
             memory_consumed = None
             time_consumed = None
-            
+            pass
         logging.info(f"## BR Time and Ram checkpoint, Time consumed: {time_consumed}, Ram Consumed: {memory_consumed}")
         return jsonify(return_data)
 
