@@ -3209,7 +3209,7 @@ def margin_for_extracted_fields(self, parameters):
             query = f"SELECT `{column}` FROM `OCR` WHERE case_id = %s"
             params = [case_id]
             result = ocr_db.execute_(query, params=params).to_dict(orient='records')
-            query = f"SELECT `PARTY_ID` FROM `OCR` WHERE case_id = %s"
+            query = "SELECT `PARTY_ID` FROM `OCR` WHERE case_id = %s"
             params = [case_id]
             result_ = ocr_db.execute_(query, params=params)
             party_id = result_['PARTY_ID'][0]
@@ -3266,8 +3266,8 @@ def margin_for_extracted_fields(self, parameters):
                                 if row['fieldName'].replace(' &', '').replace(' ', '').lower() == key.replace(' ', '').lower():
                                     row['margin'] = margin
                                     row['aging'] = age
-                    else:
-                        pass
+                    
+                    
                     
             final_data_dict = {**data_dict_,**data_dict}
             logging.info(f"final data dict: {final_data_dict}")
@@ -3294,7 +3294,7 @@ def margin_for_extracted_fields(self, parameters):
 
 
     except Exception as e:
-        logging.error("Unable to execute the python code:", e)
+        logging.error(f"Unable to execute the python code: {e}")
 
 @register_method
 def array_data_append(self,parameters):
