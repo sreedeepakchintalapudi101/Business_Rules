@@ -182,9 +182,10 @@ def compare_strings(string1, string2):
     similarity_ratio = seq_matcher.ratio() * 100
     return similarity_ratio
 
+
 @register_method
 def date_cus(self, parameters):
-    logging.info(f"parameters got are {parameters}")
+    
     name_ = parameters['name__']
     logging.info(f"name_ is  {name_}")
     seg_ = parameters['seg']
@@ -242,7 +243,7 @@ def do_get_length(self, parameters):
         1) Recursive evaluations of rules can be made.
     
     """
-    logging.info(f"parameters got are {parameters}")
+    
     value = parameters['value']
     try:
         value = len(value)
@@ -264,7 +265,7 @@ def do_user_match(self, parameters):
     }
 
     """
-    logging.info(f"parameters got are {parameters}")
+    
     words_table = parameters['words_table']
     words_column = parameters['words_column']
     match_word = parameters['match_word']
@@ -323,7 +324,7 @@ def do_get_range(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Range is the python range kind of (exclusive of the end_index)
     """
-    logging.info(f"parameters got are {parameters}")
+    
     value = parameters['value']
     start_index = parameters['start_index']
     end_index = parameters['end_index']
@@ -342,7 +343,7 @@ def do_sum(self, parameters):
     'parameters': {source':'input_config', 'table':'ocr', 'column': 'End_date'}
         
     """
-    logging.info(f"parameters got to doSum function are : {parameters}")
+    
     input_series = self.get_param_value(parameters)
     logging.info(f"Got series is : {input_series}")
     if input_series is not None:
@@ -382,7 +383,7 @@ def do_select(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    logging.info(f"parameters got are {parameters}")
+    
     from_table = parameters['from_table']
     column_name_to_select = parameters['select_column']
     lookup_filters = parameters['lookup_filters']
@@ -443,7 +444,7 @@ def do_select_all(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    logging.info(f"parameters got are {parameters}")
+    
     from_table = parameters['from_table']
     column_name_to_select = parameters['select_column']
     lookup_filters = parameters['lookup_filters']
@@ -515,7 +516,7 @@ def do_transform(self, parameters) :
         1) Recursive evaluations of rules can be made.
     """
     equation = ''
-    logging.info(f"parameters got are {parameters}")
+    
     for element,number_operator in parameters.items() :
         if element == 'param' :
             value = f'{number_operator}'
@@ -544,7 +545,7 @@ def do_contains(self, parameters):
                         }
             
     """
-    logging.info(f"parameters got are {parameters}")
+    
     table_name = parameters['table_name']
     column_name = parameters['column_name']
     value = parameters["value"]
@@ -568,7 +569,7 @@ def do_contains_master(self, parameters):
                         }
             
     """
-    logging.info(f"parameters got are {parameters}")
+    
     table_name = parameters['table_name']
     column_name = parameters['column_name']
     value = parameters['value']
@@ -603,7 +604,7 @@ def do_count(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    logging.info(f"parameters got are {parameters}")
+    
     from_table = parameters['from_table']
     lookup_filters = parameters['lookup_filters']
 
@@ -678,7 +679,7 @@ def dodue_date_generate(self, parameters):
                       }
     }   
     """
-    logging.info(f"parameters got are {parameters}")
+    
     holidays = self.get_param_value(parameters["holidays"])
     extended_days = self.get_param_value(parameters["Extended_days"])
     logging.info(f"Extended_days {extended_days}")
@@ -720,7 +721,7 @@ def bankdodue_date_generate(self, parameters):
     """
     holidays = self.get_param_value(parameters["holidays"])
     logging.info(holidays)
-    logging.info(f"parameters got are {parameters}")
+    
     due_date = self.get_param_value(parameters["Due_date"])
     receipt_time = self.get_param_value(parameters["Receipt_time"])
     try:
@@ -785,8 +786,7 @@ def dosat_and_sun_holidays(self, parameters):
 
 
     """
-    logging.info(f"parameters got are {parameters}")
-    
+        
     try:
         year = int(datetime.now().year)
         logging.info(f"year is : {year}")
@@ -839,7 +839,7 @@ def dosat_and_sun_holidays(self, parameters):
 
 @register_method
 def get_holidays_fromdatabase(self, parameters):
-    logging.info(f"parameters got are {parameters}")
+    
     from_table1 = self.get_param_value(parameters['from_table1'])
     from_column1 = self.get_param_value(parameters['from_column1'])
     sun_sat_holidays_list = self.get_param_value(parameters['sun_sat_holidays'])
