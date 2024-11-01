@@ -2738,11 +2738,12 @@ def get_data_dict(self,parameters):
 @register_method
 def dosummary(self, parameters):
     logging.info(f"parameters got are {parameters}")
+    debitors_statement="DEBITORS STATEMENT"
     db_config["tenant_id"] = self.tenant_id
     case_id = self.case_id
     ocr_db = DB("extraction", **db_config)
     field_changes = self.field_changes
-    tables = ["STOCK STATEMENT", "DEBITORS STATEMENT", "CREDITORS"]
+    tables = ["STOCK STATEMENT", debitors_statement, "CREDITORS"]
 
     table = next((table_ for table_ in field_changes if table_ in tables), None)
     if not table:
