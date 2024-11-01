@@ -2195,8 +2195,8 @@ def duplicate_check(self,parameters):
         params_.append(case_id)
         
         query += " AND ".join(conditions)
-        df = ocr_db.execute_(query, params=params_)
-        
+        #df = ocr_db.execute_(query, params=params_)
+        df=''
         logging.info(f"#### Constructed Query is : {query}")
         logging.info(f"#### Length of df is : {len(df)}")
 
