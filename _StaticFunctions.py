@@ -182,10 +182,9 @@ def compare_strings(string1, string2):
     similarity_ratio = seq_matcher.ratio() * 100
     return similarity_ratio
 
-
 @register_method
 def date_cus(self, parameters):
-    
+    logging.info(f"parameters got are {parameters}")
     name_ = parameters['name__']
     logging.info(f"name_ is  {name_}")
     seg_ = parameters['seg']
@@ -243,7 +242,7 @@ def do_get_length(self, parameters):
         1) Recursive evaluations of rules can be made.
     
     """
-    
+    logging.info(f"parameters got are {parameters}")
     value = parameters['value']
     try:
         value = len(value)
@@ -265,7 +264,7 @@ def do_user_match(self, parameters):
     }
 
     """
-    
+    logging.info(f"parameters got are {parameters}")
     words_table = parameters['words_table']
     words_column = parameters['words_column']
     match_word = parameters['match_word']
@@ -324,7 +323,7 @@ def do_get_range(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Range is the python range kind of (exclusive of the end_index)
     """
-    
+    logging.info(f"parameters got are {parameters}")
     value = parameters['value']
     start_index = parameters['start_index']
     end_index = parameters['end_index']
@@ -343,7 +342,7 @@ def do_sum(self, parameters):
     'parameters': {source':'input_config', 'table':'ocr', 'column': 'End_date'}
         
     """
-    
+    logging.info(f"parameters got to doSum function are : {parameters}")
     input_series = self.get_param_value(parameters)
     logging.info(f"Got series is : {input_series}")
     if input_series is not None:
@@ -383,7 +382,7 @@ def do_select(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    
+    logging.info(f"parameters got are {parameters}")
     from_table = parameters['from_table']
     column_name_to_select = parameters['select_column']
     lookup_filters = parameters['lookup_filters']
@@ -444,7 +443,7 @@ def do_select_all(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    
+    logging.info(f"parameters got are {parameters}")
     from_table = parameters['from_table']
     column_name_to_select = parameters['select_column']
     lookup_filters = parameters['lookup_filters']
@@ -516,7 +515,7 @@ def do_transform(self, parameters) :
         1) Recursive evaluations of rules can be made.
     """
     equation = ''
-    
+    logging.info(f"parameters got are {parameters}")
     for element,number_operator in parameters.items() :
         if element == 'param' :
             value = f'{number_operator}'
@@ -545,7 +544,7 @@ def do_contains(self, parameters):
                         }
             
     """
-    
+    logging.info(f"parameters got are {parameters}")
     table_name = parameters['table_name']
     column_name = parameters['column_name']
     value = parameters["value"]
@@ -569,7 +568,7 @@ def do_contains_master(self, parameters):
                         }
             
     """
-    
+    logging.info(f"parameters got are {parameters}")
     table_name = parameters['table_name']
     column_name = parameters['column_name']
     value = parameters['value']
@@ -604,7 +603,7 @@ def do_count(self, parameters):
         1) Recursive evaluations of rules can be made for the parameter value.
         2) Its like vlook up in the dataframe and the from_table must have the primary key...case_id.
     """
-    
+    logging.info(f"parameters got are {parameters}")
     from_table = parameters['from_table']
     lookup_filters = parameters['lookup_filters']
 
@@ -679,7 +678,7 @@ def dodue_date_generate(self, parameters):
                       }
     }   
     """
-    
+    logging.info(f"parameters got are {parameters}")
     holidays = self.get_param_value(parameters["holidays"])
     extended_days = self.get_param_value(parameters["Extended_days"])
     logging.info(f"Extended_days {extended_days}")
@@ -721,7 +720,7 @@ def bankdodue_date_generate(self, parameters):
     """
     holidays = self.get_param_value(parameters["holidays"])
     logging.info(holidays)
-    
+    logging.info(f"parameters got are {parameters}")
     due_date = self.get_param_value(parameters["Due_date"])
     receipt_time = self.get_param_value(parameters["Receipt_time"])
     try:
@@ -786,7 +785,8 @@ def dosat_and_sun_holidays(self, parameters):
 
 
     """
-        
+    logging.info(f"parameters got are {parameters}")
+    
     try:
         year = int(datetime.now().year)
         logging.info(f"year is : {year}")
@@ -839,7 +839,7 @@ def dosat_and_sun_holidays(self, parameters):
 
 @register_method
 def get_holidays_fromdatabase(self, parameters):
-    
+    logging.info(f"parameters got are {parameters}")
     from_table1 = self.get_param_value(parameters['from_table1'])
     from_column1 = self.get_param_value(parameters['from_column1'])
     sun_sat_holidays_list = self.get_param_value(parameters['sun_sat_holidays'])
@@ -915,7 +915,7 @@ def do_contains_string(self, parameters):
                         }
             }
     """
-    
+    logging.info(f"parameters got are {parameters}")
     word = parameters['word']
     strings_list = parameters['strings_list']
     try:
@@ -2195,8 +2195,8 @@ def duplicate_check(self,parameters):
         params_.append(case_id)
         
         query += " AND ".join(conditions)
-        #df = ocr_db.execute_(query, params=params_)
-        df=''
+        df = ocr_db.execute_(query, params=params_)
+        
         logging.info(f"#### Constructed Query is : {query}")
         logging.info(f"#### Length of df is : {len(df)}")
 
@@ -2735,227 +2735,6 @@ def get_data_dict(self,parameters):
         logging.error(e)
         return 0
     
-@register_method
-def dosummary(self, parameters):
-    logging.info(f"parameters got are {parameters}")
-    db_config["tenant_id"] = self.tenant_id
-    case_id = self.case_id
-    ocr_db = DB("extraction", **db_config)
-    field_changes = self.field_changes
-    tables = ["STOCK STATEMENT", "DEBITORS STATEMENT", "CREDITORS"]
-
-    table = next((table_ for table_ in field_changes if table_ in tables), None)
-    if not table:
-        return False
-
-    try:
-        query = f"SELECT `{table}` FROM `custom_table` WHERE case_id = %s"
-        params = [case_id]
-        df = ocr_db.execute_(query, params=params)
-        df = json.loads(df[table][0])
-
-        headers = [header for header in df[0]["header"] if header not in ['Total', 'Unit/Quantity', 'No. of debtors', 'No. of creditors']][1:]
-        row_data_ = df[0]["rowData"][:-1]
-
-        if row_data_:
-            l = []
-            for j in headers:
-                sum_ = sum(float(i.get(j, 0)) for i in row_data_ if i.get(j))
-                l.append(str(sum_))
-
-            last_dic = df[0]["rowData"][-1]
-            for i, header in enumerate(headers):
-                last_dic[header] = l[i]
-
-            row_data_.append(last_dic)
-            res = {"header": df[0]["header"], "rowData": row_data_}
-            c_dict = json.dumps([res])
-
-            query1 = f"UPDATE `custom_table` SET `{table}` = %s WHERE case_id = %s"
-            params1 = [c_dict, case_id]
-            self.cus_table = table
-            ocr_db.execute_(query1, params=params1)
-
-            return table
-        else:
-            return True
-
-    except Exception as e:
-        logging.error("error in do_summary function")
-        logging.error(e)
-        return False
-
-    
-@register_method
-def dosummary_1(self,parameters):
-    logging.info(f"parameters got are {parameters}")
-    db_config["tenant_id"]=self.tenant_id
-    case_id=self.case_id
-    ocr_db=DB("extraction",**db_config)
-    field_changes=self.field_changes
-    tables=["STOCK STATEMENT","DEBITORS STATEMENT","CREDITORS"]
-    for table_ in field_changes:
-        if table_ in tables:
-            table= table_
-    try:
-        query =f"SELECT `{table}` FROM `custom_table` WHERE case_id = %s"
-        params = [case_id]
-        df = ocr_db.execute_(query, params=params)
-        df=df[table][0]
-        df=json.loads(df)
-
-        header2=df[0]["header"]
-        logging.info(f"Headers is for df of two {header2}")
-        headers=df[0]["header"]
-        logging.info(f"Headers is for df of zero {headers}")
-        
-        headers = [header for header in headers if header not in ['Total', 'Unit/Quantity','No. of debtors','No. of creditors']]
-        headers=headers[1:]
-        row_data_=df[0]["rowData"]
-        row_data_=row_data_[0:]
-        logging.info(f"Row data is {row_data_}")
-        for x in row_data_:
-            logging.info(f"x value is  {x}")
-            sum_=0
-            for y in headers:
-                logging.info(f"y value is {y}")
-                try:
-                    sum_+=float(x[y])
-                except Exception:
-                    pass
-            t=[str(sum_)]
-            if 'Total' in x:
-                x['Total'] =str(sum_) 
-            else:
-                x.update({'Total': str(sum_)}) 
-            logging.info(f"T value is {t}")        
-        res={}
-        res["header"]=header2
-        res["rowData"]=row_data_
-        logging.info(f"res values is {res}")
-        li=[]
-        li.append(res)
-        c_dict_=json.dumps(li)
-        logging.info(f"c dictionary dumps check {c_dict_}")
-        query1 = f"UPDATE `custom_table` SET `{table}` = %s WHERE case_id = %s"
-        params1 = [c_dict_, case_id]
-        self.cus_table=table
-        ocr_db.execute_(query1, params=params1)
-        return table
-    
-    except Exception as e:
-        logging.error("Error  in do_summary function")
-        logging.error(e)
-        return False
-
-
-
-
-
-
-
-@register_method
-def dosummary_debtors(self,parameters):
-    logging.info(f"parameters got are {parameters}")
-    db_config["tenant_id"]=self.tenant_id
-    case_id=self.case_id
-    ocr_db=DB("extraction",**db_config)
-    try:
-        query = "SELECT `DEBITORS STATEMENT` FROM `custom_table` WHERE case_id = %s"
-        params = [case_id]
-        df = ocr_db.execute_(query, params=params)
-        df=df['DEBITORS STATEMENT'][0]
-        df=json.loads(df)
-        
-        header1=df[0]["header"]
-        headers=df[0]["header"]
-        headers=headers[1:]
-        row_data_=df[0]["rowData"]
-        row_data_=row_data_[0:-1]
-        l=[]
-        for j in headers:
-            sum_=0
-            for i in row_data_:
-                try:
-                    sum_+=float(i[j])
-                except Exception:
-                    pass
-            l.append(str(sum_))
-        last_dic=df[0]["rowData"][-1]
-        for i in range(len(headers)):
-            last_dic[headers[i]]=l[i]
-        row_data_.append(last_dic)
-        res={}
-        res["header"]=header1
-        res["rowData"]=row_data_
-        li=[]
-        li.append(res)
-        c_dict=json.dumps(li)
-        logging.info(f"c dictionary dumps check {c_dict}")
-        query1 = "UPDATE `custom_table` SET `DEBITORS STATEMENT` = %s WHERE case_id = %s"
-        params1 = [c_dict, case_id]
-        ocr_db.execute_(query1, params=params1)
-        self.cus_table_deb=True
-        return True
-    
-    except Exception as e:
-        logging.error("Error in do_summary Function")
-        logging.error(e)
-        return False
-
-
-
-
-
-
-@register_method
-def dosummary_creditors(self,parameters):
-    logging.info(f"parameters got are {parameters}")
-    db_config["tenant_id"]=self.tenant_id
-    case_id=self.case_id
-    ocr_db=DB("extraction",**db_config)
-    try:
-        query = "SELECT `CREDITORS` FROM `custom_table` WHERE case_id = %s"
-        params = [case_id]
-        df = ocr_db.execute_(query, params=params)
-        df=df['CREDITORS'][0]
-        df=json.loads(df)
-        
-        header1=df[0]["header"]
-        headers=df[0]["header"]
-        headers=headers[1:]
-        row_data_=df[0]["rowData"]
-        row_data_=row_data_[0:-1]
-        l=[]
-        for j in headers:
-            sum_=0
-            for i in row_data_:
-                try:
-                    sum_+=float(i[j])
-                except Exception:
-                    pass
-            l.append(str(sum_))
-        last_dic=df[0]["rowData"][-1]
-        for i in range(len(headers)):
-            last_dic[headers[i]]=l[i]
-        row_data_.append(last_dic)
-        res={}
-        res["header"]=header1
-        res["rowData"]=row_data_
-        li=[]
-        li.append(res)
-        c_dict=json.dumps(li)
-        logging.info(f"c dictionary dumps check {c_dict}")
-        query1 = "UPDATE `custom_table` SET `CREDITORS` = %s WHERE case_id = %s"
-        params1 = [c_dict, case_id]
-        ocr_db.execute_(query1, params=params1)
-        self.cus_table_crd=True
-        return True
-    
-    except Exception as e:
-        logging.error("Error in do_summary function")
-        logging.error(e)
-        return False                 
 
 
 
