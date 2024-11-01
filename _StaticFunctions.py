@@ -2855,6 +2855,74 @@ def dosummary_1(self,parameters):
 
 
 
+    
+def dosummary_cred_deb(self,parameters,column_name):
+    logging.info(f"parameters got are {parameters}")
+    db_config["tenant_id"]=self.tenant_id
+    case_id=self.case_id
+    ocr_db=DB("extraction",**db_config)
+    try:
+        query = f"SELECT {column_name}  FROM `custom_table` WHERE case_id = %s"
+        params = [case_id]
+        df = ocr_db.execute_(query, params=params)
+        df=df[column_name][0]
+        df=json.loads(df)
+        
+        header1=df[0]["header"]
+        headers=df[0]["header"]
+        headers=headers[1:]
+        row_data_=df[0]["rowData"]
+        row_data_=row_data_[0:-1]
+        l=[]
+        for j in headers:
+            sum_=0
+            for i in row_data_:
+                try:
+                    sum_+=float(i[j])
+                except Exception:
+                    pass
+            l.append(str(sum_))
+        last_dic=df[0]["rowData"][-1]
+        for i in range(len(headers)):
+            last_dic[headers[i]]=l[i]
+        row_data_.append(last_dic)
+        res={}
+        res["header"]=header1
+        res["rowData"]=row_data_
+        li=[]
+        li.append(res)
+        c_dict=json.dumps(li)
+        logging.info(f"c dictionary dumps check {c_dict}")
+        query1 = f"UPDATE `custom_table` SET `{column_name}` = %s WHERE case_id = %s"
+        params1 = [c_dict, case_id]
+        ocr_db.execute_(query1, params=params1)
+        if column_name=="CREDITORS":
+            self.cus_table_crd=True
+        else:
+            self.cus_table_deb=True
+            
+        return True
+    
+    except Exception as e:
+        logging.error("Error in do_summary function")
+        logging.error(e)
+        return False              
+    
+    
+@register_method
+def dosummary_creditors(self,parameters):
+    
+    column_name="CREDITORS"
+    return dosummary_cred_deb(self,parameters,column_name)   
+
+
+@register_method
+def dosummary_debtors(self,parameters):
+    
+    column_name="DEBITORS STATEMENT"
+    return dosummary_cred_deb(self,parameters,column_name)   
+
+
 
 
 
