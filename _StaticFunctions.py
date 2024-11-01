@@ -2735,6 +2735,125 @@ def get_data_dict(self,parameters):
         logging.error(e)
         return 0
     
+@register_method
+def dosummary(self, parameters):
+    logging.info(f"parameters got are {parameters}")
+    db_config["tenant_id"] = self.tenant_id
+    case_id = self.case_id
+    ocr_db = DB("extraction", **db_config)
+    field_changes = self.field_changes
+    tables = ["STOCK STATEMENT", "DEBITORS STATEMENT", "CREDITORS"]
+
+    table = next((table_ for table_ in field_changes if table_ in tables), None)
+    if not table:
+        return False
+
+    try:
+        query = f"SELECT `{table}` FROM `custom_table` WHERE case_id = %s"
+        params = [case_id]
+        df = ocr_db.execute_(query, params=params)
+        df = json.loads(df[table][0])
+
+        headers = [header for header in df[0]["header"] if header not in ['Total', 'Unit/Quantity', 'No. of debtors', 'No. of creditors']][1:]
+        row_data_ = df[0]["rowData"][:-1]
+
+        if row_data_:
+            l = []
+            for j in headers:
+                sum_ = sum(float(i.get(j, 0)) for i in row_data_ if i.get(j))
+                l.append(str(sum_))
+
+            last_dic = df[0]["rowData"][-1]
+            for i, header in enumerate(headers):
+                last_dic[header] = l[i]
+
+            row_data_.append(last_dic)
+            res = {"header": df[0]["header"], "rowData": row_data_}
+            c_dict = json.dumps([res])
+
+            query1 = f"UPDATE `custom_table` SET `{table}` = %s WHERE case_id = %s"
+            params1 = [c_dict, case_id]
+            self.cus_table = table
+            ocr_db.execute_(query1, params=params1)
+
+            return table
+        else:
+            return True
+
+    except Exception as e:
+        logging.error("error in do_summary function")
+        logging.error(e)
+        return False
+
+    
+@register_method
+def dosummary_1(self,parameters):
+    logging.info(f"parameters got are {parameters}")
+    db_config["tenant_id"]=self.tenant_id
+    case_id=self.case_id
+    ocr_db=DB("extraction",**db_config)
+    field_changes=self.field_changes
+    tables=["STOCK STATEMENT","DEBITORS STATEMENT","CREDITORS"]
+    for table_ in field_changes:
+        if table_ in tables:
+            table= table_
+    try:
+        query =f"SELECT `{table}` FROM `custom_table` WHERE case_id = %s"
+        params = [case_id]
+        df = ocr_db.execute_(query, params=params)
+        df=df[table][0]
+        df=json.loads(df)
+
+        header2=df[0]["header"]
+        logging.info(f"Headers is for df of two {header2}")
+        headers=df[0]["header"]
+        logging.info(f"Headers is for df of zero {headers}")
+        
+        headers = [header for header in headers if header not in ['Total', 'Unit/Quantity','No. of debtors','No. of creditors']]
+        headers=headers[1:]
+        row_data_=df[0]["rowData"]
+        row_data_=row_data_[0:]
+        logging.info(f"Row data is {row_data_}")
+        for x in row_data_:
+            logging.info(f"x value is  {x}")
+            sum_=0
+            for y in headers:
+                logging.info(f"y value is {y}")
+                try:
+                    sum_+=float(x[y])
+                except Exception:
+                    pass
+            t=[str(sum_)]
+            if 'Total' in x:
+                x['Total'] =str(sum_) 
+            else:
+                x.update({'Total': str(sum_)}) 
+            logging.info(f"T value is {t}")        
+        res={}
+        res["header"]=header2
+        res["rowData"]=row_data_
+        logging.info(f"res values is {res}")
+        li=[]
+        li.append(res)
+        c_dict_=json.dumps(li)
+        logging.info(f"c dictionary dumps check {c_dict_}")
+        query1 = f"UPDATE `custom_table` SET `{table}` = %s WHERE case_id = %s"
+        params1 = [c_dict_, case_id]
+        self.cus_table=table
+        ocr_db.execute_(query1, params=params1)
+        return table
+    
+    except Exception as e:
+        logging.error("Error  in do_summary function")
+        logging.error(e)
+        return False
+
+
+
+
+
+
+
 
 
 
