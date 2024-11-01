@@ -915,7 +915,7 @@ def do_contains_string(self, parameters):
                         }
             }
     """
-    logging.info(f"parameters got are {parameters}")
+    
     word = parameters['word']
     strings_list = parameters['strings_list']
     try:
