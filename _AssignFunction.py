@@ -76,60 +76,8 @@ def do_assign(self, parameters):
 
 @register_method
 def do_assign_q(self, parameters):
-    """Update the parameter in the data_source of this class.
-    Also update the changed fields that we are keeping track of.
     
-    
-    Actually modifications are being done in the database ...as we know the queue that is being 
-    getting assigned ...
-    
-    We have to think about the updations in the database....Design changes might be required....
-
-    Also as of now we are keeping the assign_placd so that there are less changes in the rule_strings
-    and also backward compatable....
-    
-    Actually its not required.
-
-    Args:
-        parameters (dict): the left parameters where to assign and right one what to assign
-    eg:
-       'parameters': {'assign_place':{'source':'input_config', table':'ocr', 'column':invoice_no},
-                       'assign_value':{'source':'input', 'value':4}
-                    }
-    Note:
-        1) Recursive evaluations of rules can be made.
-        eg:
-            'parameters': {'assign_table':{'source':'input', 'value':5},
-                       'assign_value':{'source':'rule', 'value':rule}
-                    }
-                value is itself can be a rule.
-    """
-    logging.debug(f"parameters got are {parameters}")
-    
-    assign_value = self.get_data(parameters)
-
-    table_key = parameters['table']
-    column_key = parameters['column']
-    # update the data source if the value exists
-    try:
-        logging.info(f"Updated the data source with the values {table_key} {column_key}\n ")
-        self.data_source[table_key][column_key] = assign_value
-    except Exception as e:
-        logging.error("Couldnt update the data source with the values")
-        logging.error(e)
-        
-    # update the changed fields
-    try:
-        if table_key not in self.changed_fields:
-            self.changed_fields[table_key] = {}
-        self.changed_fields[table_key][column_key] = assign_value
-        logging.info(f"updated the changed fields\n changed_fields are {self.changed_fields}")
-        return True
-    except Exception as e:
-        logging.error("error in assigning and updating the fields")
-        logging.error(e)
-
-    return False
+    return do_assign(self,parameters)
         
     
         
