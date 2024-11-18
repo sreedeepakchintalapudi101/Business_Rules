@@ -16,10 +16,17 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
 
+      # Install Dependency-Check CLI
+      - name: Install Dependency-Check
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+          unzip dependency-check-8.4.0-release.zip -d dependency-check
+          export PATH=$PATH:$(pwd)/dependency-check
+
       # Run Dependency Check to generate the report
       - name: Run Dependency Check
         run: |
-          dependency-check --project my-project --scan ./ --format HTML --out dependency-check-report.html
+          dependency-check/bin/dependency-check.sh --project my-project --scan ./ --format HTML --out dependency-check-report.html
 
       # Run SonarQube Scan and include the Dependency-Check report path
       - uses: sonarsource/sonarqube-scan-action@v3
@@ -29,9 +36,3 @@ jobs:
         with:
           extra-properties: |
             sonar.dependencyCheck.htmlReportPath=dependency-check-report.html
-
-      # If you wish to fail your job when the Quality Gate is red, uncomment the following lines
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
