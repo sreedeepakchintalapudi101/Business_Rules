@@ -21,12 +21,13 @@ jobs:
         run: |
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
           unzip dependency-check-8.4.0-release.zip -d dependency-check
-          export PATH=$PATH:$(pwd)/dependency-check
+          chmod +x dependency-check/bin/dependency-check.sh
+          ls -R dependency-check # Debugging step to confirm the folder structure
 
       # Run Dependency Check to generate the report
       - name: Run Dependency Check
         run: |
-          dependency-check/bin/dependency-check.sh --project my-project --scan ./ --format HTML --out dependency-check-report.html
+          ./dependency-check/bin/dependency-check.sh --project my-project --scan ./ --format HTML --out dependency-check-report.html
 
       # Run SonarQube Scan and include the Dependency-Check report path
       - uses: sonarsource/sonarqube-scan-action@v3
