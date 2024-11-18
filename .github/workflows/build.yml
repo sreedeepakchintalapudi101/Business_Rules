@@ -14,15 +14,21 @@ jobs:
       # Checkout the repository code
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
 
+      # Run Dependency Check to generate the report
+      - name: Run Dependency Check
+        run: |
+          dependency-check --project my-project --scan ./ --format HTML --out dependency-check-report.html
 
-      # Run SonarQube Scan with Dependency Check Report Path
+      # Run SonarQube Scan and include the Dependency-Check report path
       - uses: sonarsource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        
+        with:
+          extra-properties: |
+            sonar.dependencyCheck.htmlReportPath=dependency-check-report.html
 
       # If you wish to fail your job when the Quality Gate is red, uncomment the following lines
       # - uses: sonarsource/sonarqube-quality-gate-action@master
