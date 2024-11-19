@@ -24,7 +24,9 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      
+        with:
+          extra-properties: |
+            sonar.dependencyCheck.htmlReportPath=/home/thahera/dependency-check-report.html
 
       # If you wish to fail your job when the Quality Gate is red, uncomment the following lines
       # - uses: sonarsource/sonarqube-quality-gate-action@master
