@@ -16,21 +16,24 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
 
-      # Install OWASP Dependency-Check
-      - name: Install OWASP Dependency-Check
+      # Install Java (necessary for Dependency-Check)
+      - name: Install Java
         run: |
-          # Install Dependency-Check using Homebrew (for Linux)
           sudo apt-get update
           sudo apt-get install -y default-jre
+
+      # Download and install OWASP Dependency-Check
+      - name: Download and install OWASP Dependency-Check
+        run: |
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.0.0/dependency-check-8.0.0-release.zip
           unzip dependency-check-8.0.0-release.zip
           export DEPENDENCY_CHECK_HOME=$(pwd)/dependency-check
           export PATH=$DEPENDENCY_CHECK_HOME/bin:$PATH
 
-      # Run Dependency Check and generate report
+      # Run OWASP Dependency Check and generate the report
       - name: Run OWASP Dependency Check
         run: |
-          $DEPENDENCY_CHECK_HOME/bin/dependency-check --project my-project --out ./dependency-check-report.html
+          dependency-check --project my-project --out ./dependency-check-report.html
 
       # Run SonarQube Scan with Dependency Check Report Path
       - uses: sonarsource/sonarqube-scan-action@v3
@@ -39,7 +42,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           extra-properties: |
-            sonar.dependencyCheck.htmlReportPath=./dependency-check-report.html  # Relative to the workspace
+            sonar.dependencyCheck.htmlReportPath=./dependency-check-report.html  # Relative path
 
       # If you wish to fail your job when the Quality Gate is red, uncomment the following lines
       # - uses: sonarsource/sonarqube-quality-gate-action@master
