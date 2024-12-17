@@ -1,4 +1,4 @@
-name: Build and Analyze with SonarQube
+name: Build
 
 on:
   push:
@@ -7,33 +7,17 @@ on:
 
 jobs:
   build:
-    name: Build and Analyze
+    name: Build and analyze
     runs-on: ubuntu-latest
-
+    
     steps:
       # Checkout the repository code
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
-      # Install Java (necessary for Dependency-Check)
-      - name: Install Java
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y default-jre
-
-      # Download and install OWASP Dependency-Check
-      - name: Download and install OWASP Dependency-Check
-        run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.0.0/dependency-check-8.0.0-release.zip
-          unzip dependency-check-8.0.0-release.zip
-          export DEPENDENCY_CHECK_HOME=$(pwd)/dependency-check
-          export PATH=$DEPENDENCY_CHECK_HOME/bin:$PATH
-
-      # Run OWASP Dependency Check and generate the report
-      - name: Run OWASP Dependency Check
-        run: |
-          dependency-check --project my-project --out ./dependency-check-report.html
+      # Run Dependency Check (optional if you already have it as part of your build pipeline)
+      
 
       # Run SonarQube Scan with Dependency Check Report Path
       - uses: sonarsource/sonarqube-scan-action@v3
@@ -42,7 +26,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           extra-properties: |
-            sonar.dependencyCheck.htmlReportPath=./dependency-check-report.html  # Relative path
+            sonar.dependencyCheck.htmlReportPath=/home/thahera/dependency-check-report.html
 
       # If you wish to fail your job when the Quality Gate is red, uncomment the following lines
       # - uses: sonarsource/sonarqube-quality-gate-action@master
