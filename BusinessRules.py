@@ -1,184 +1,391 @@
-import logging
-import logging.config
-import logging.handlers
-import subprocess
+try:
+    import Lib
+    from app.db_utils import DB
+    import _StaticFunctions
+    import _BooleanReturnFunctions
+    import _AssignFunction
+except Exception:
+    from . import Lib
+    from . import _StaticFunctions
+    from app.db_utils import DB
+    from . import _BooleanReturnFunctions
+    from . import _AssignFunction
+
+
+
+try:
+    from ace_logger import Logging
+    logging = Logging()
+except Exception:
+    import logging 
+    logger=logging.getLogger() 
+    logger.setLevel(logging.DEBUG) 
+
 import os
-
-from inspect import getframeinfo, stack
-
-
-# from py_zipkin.storage import get_default_tracer
-
-def get_container_id():
-    return subprocess.check_output(['cat', '/etc/hostname']).decode('utf-8').replace('\\r\\n', '').replace('\\n','')
-
-def sanitize_msg(msg):
-    try:
-        msg = ascii(msg)
-        # msg = msg.__str__().encode('ascii', 'ignore').decode()
-    except:
-        msg = msg
-    return msg
-
-
-class Logging(logging.Logger):
-    def __init__(self, name=None, **kwargs):
-        self.log_levels = {
-            'debug': logging.DEBUG,
-            'info': logging.INFO,
-            'warning': logging.WARNING,
-            'error': logging.ERROR,
-            'critical': logging.CRITICAL
-        }
+import json
+# one configuration
+db_config = {
+    'host': os.environ['HOST_IP'],
+    'user': os.environ['LOCAL_DB_USER'],
+    'password': os.environ['LOCAL_DB_PASSWORD'],
+    'port': os.environ['LOCAL_DB_PORT']
+}
 
 
 
-        # os.makedirs('/logs/', mode=0o777, exist_ok=True
-        if eval(os.environ.get('LOG_FAIL_SAFE', 'False')):
-            logging_config = {
-                'level': self.log_levels[os.environ['LOG_LEVEL']],
-                'format': os.environ['LOG_FORMAT']
-            }
 
-            logging.basicConfig(**logging_config)
-        # elif name is not None:
-        else:
+@Lib.add_methods_from(_StaticFunctions, _BooleanReturnFunctions, _AssignFunction) 
+class BusinessRules():
+    
+    def __init__(self, case_id, rules, table_data, decision = False):
+        self.case_id = case_id
+        self.rules = rules
+        self.data_source = table_data
+        self.is_decision = decision
+        self.validation_output = False
+        self.show_validation_data = False
+        self.tenant_id = ""
+        self.return_vars="return_data"
 
-            container_id = get_container_id()
-            new_conf = '/log_config/.' + container_id + '.conf'
-            if os.path.exists(new_conf):
-                self.load_logging_conf(new_conf)
+        # fields which we are maintaining
+        self.changed_fields = {}
+        self.params_data = {}
+        self.params_data['input'] = []
+        self.params_data['input_validation'] = [] # validation params
+
+        # all the tables are maintained in the tables dictionary with key as columnn name in database
+        self.tables = {}
+
+    
+
+    def function_builder(self, method_string):
+    
+    
+
+        def fun():
+            try:
+                
+
+                return_list = self.return_vars.split(",")
+                logging.info(f"Return List is {return_list}")
+               
+
+                globals()["BR"]=self
+                
+                exec(method_string,globals(),globals())
+                
+                return_dict = {}
+                
+
+               
+
+                for param in return_list:
+                    assign_var = globals().get(param,'')
+                    logging.info(f"Assign var is {assign_var}")
+                    if assign_var is None:
+                        assign_var = ""
+                    return_dict[param] = assign_var
+
+                
+
+
+                print(f"####### RETURN DICT {return_dict}")
+                return True,return_dict
+            except Exception as e:
+                logging.info("###### Error in executing Python Code")
+                logging.exception(e)
+                return False,str(e)
+
+        return fun
+
+    def evaluate_business_rules(self):
+        """Evaluate all the rules"""
+        for rule in self.rules:
+            logging.info("\n Evaluating the rule: " +f"{rule} \n")
+            try:
+                output = self.evaluate_rule(rule)
+                logging.info("\n Output: " +f"{output} \n")
+            except Exception as e:
+                logging.error("Error evaluating the rule")
+                logging.error(e)
+        # update the changes fields in database
+        logging.info(f"\nchanged fields are \n{self.changed_fields}\n")
+        return self.changed_fields
+    
+    def evaluate_rule(self,rule):
+        """Evaluate the rule"""
+        logging.info(f"\nEvaluating the rule \n{rule}\n")
+
+        exec_fun = self.function_builder(self.rules)
+
+        try:
+            _,return_data = exec_fun()
+
+            logging.info(f"############# Return data from exe function: {return_data}")
+
+        except Exception as e:
+            logging.info("##### Error in Business Rules Evaluation")
+            logging.exception(e)
+            return {}
+
+        return return_data
+
+        
+
+
+
+        
+    
+    def conditions_met(self, conditions):
+        """Evaluate the conditions and give out the final decisoin
+        
+        """
+        eval_string = ''
+        # return True if there are no conditions...that means we are doing else..
+        if not conditions:
+            return True
+        # evaluate the conditions
+        for condition in conditions:
+            logging.info(f"Evaluting the condition {condition}")
+            if condition == 'AND' or condition == 'OR':
+                eval_string += ' '+condition.lower()+' '
             else:
-                container_name = name
-                try:
-                    with open('/log_config/logging.conf') as conf:
-                        content = conf.read()
-                        content = content.replace('$FILE_NAME', container_name)
-                        new_conf = '/log_config/.' + container_id + '.conf'
-                        with open(new_conf, 'w') as new_file:
-                            new_file.write(content)
-                        self.load_logging_conf(new_conf)
-                except:
-                    import traceback
-                    traceback.print_exc()
-                    print('error in logging')
-        # else:
-        #     container_id = get_container_id()
-        #     new_conf = '/log_config/.' + container_id + '.conf'
-        #     self.load_logging_conf(new_conf)
+                eval_string += ' '+str(self.evaluate_rule(condition))+' '
+        logging.info(f"\n eval string is {eval_string} \n output is {eval(eval_string)}")
+        return eval(eval_string)
+
+    def evaluate_condition(self, evaluations):
+        """Execute the conditional statements.
+
+        Args:
+            evaluations(dict) 
+        Returns:
+            decision(boolean) If its is_decision.
+            True If conditions met and it is done with executions.
+            False For any other case (scenario).
+        """
+        for each_if_conditions in evaluations:
+            conditions = each_if_conditions['conditions']
+            executions = each_if_conditions['executions']
+            logging.info(f'\nconditions got are \n{conditions}\n')
+            logging.info(f'\nexecutions got are \n{executions}\n')
+            decision = self.conditions_met(conditions)
+            
+            """
+            Why this self.is_decision and decision ?
+                In decison tree there are only one set of conditions to check
+                But other condition rules might have (elif conditions which needs to be evaluate) 
+            """
+            if self.is_decision:
+                if decision:
+                    for rule in executions:
+                        self.evaluate_rule(rule)
+                logging.info(f"\n Decision got for the (for decision tree) condition\n {decision}")    
+                return decision
+            if decision:
+                for rule in executions:
+                    self.evaluate_rule(rule)
+                return True
+        return False
+
+    def get_table_data(self, table_name, column_name):
+        """Store the table data in the tables dict"""
+        self.tables[column_name] = self.data_source[table_name][column_name]
+    
+    def evaluate_table(self, rule):
+        """Evaluate the table rule on all the rows"""
+        # store the required tables in the tables dict
+        self.get_table_data(rule['table'],rule['column'])
+
+       
+        rows = json.loads(self.tables[rule['column_name']])
+        for index in range(1, len(rows)):
+            self.index = index
+            self.evaluate_rule(rule['evaluate_rule'])
+        
+        # update the changed fields
+        logging.info(f"after assigning table : {self.tables[rule['column_name']]}")
+        if rule['table_name'] not in self.changed_fields:
+            self.changed_fields[rule['table_name']] = {}
+        self.changed_fields[rule['table_name']][rule['column_name']] = json.dumps(self.tables[rule['column_name']])
+
+    def get_param_value(self, param_object):
+        """Returns the parameter value.
+
+        Args:
+            param_object(dict) The param dict from which we will parse and get the value.
+        Returns:
+            The value of the parameter
+        Note:
+            It returns a value of type we have defined. 
+            If the parameter is itself a rule then it evaluates the rule and returns the value.
+        """
+        logging.info(f"\nPARAM OBJECT IS {param_object}\n")
+        param_source = param_object['source']
+        if param_source == 'input_db':
+            db = param_object['database']
+            db = db.split('_')[1]
+            table_key = param_object['table']
+            column_key = param_object['column']
+           
+            db = DB(f'{db}', **db_config)
+            query = f"SELECT `{column_key}` from `{table_key}` where `case_id`='{self.case_id}'"
+            
+            value = ""
+            try:
+                result_df = db.execute_(query)
+                if not result_df.empty:
+                    value = list(result_df[column_key])[0]
+                else:
+                    value = "UNIDENTIFIED VALUE"
+            except Exception as e:
+                logging.error("cannot execute the query and get the value for the caseid.Please check the rule")
+                logging.error(e)
+            return value
+        if param_source == 'input_config':
+            table_key = param_object['table']
+            column_key = param_object['column']
+            table_key = table_key.strip() # strip for extra spaces
+            column_key = column_key.strip() # strip for extra spaces
+            logging.debug(f"\ntable is {table_key} and column key is {column_key}\n")
+            try:
+                data = {}
+                # update params data
+                data['type'] = 'from_table'
+                data['table'] = table_key
+                data['column'] = column_key
+                data['value'] = self.data_source[table_key][column_key]
+                self.params_data['input'].append(data)
+                self.params_data['input_validation'].append({'field': column_key})
+                return data['value']
+            except Exception as e:
+                logging.error("\ntable or column key not found\n")
+                logging.error(str(e))
+                logging.info(f"\ntable data is {self.data_source}\n")
+        if param_source == 'rule':
+            param_value = param_object['value']
+            return self.evaluate_rule(param_value)
+        if param_source == 'input':
+            param_value = param_object['value']
+            
+            return  param_value
+        if param_source == 'table':
+            table_key = param_object['table_name']
+            column_key = param_object['column_name']
+            row_index = self.index
+            try:
+                table_data = json.loads(self.tables[table_key])
+            except json.JSONDecodeError:
+               table_data = self.tables[table_key]
+            
+            columns_list = [col_data[0] for col_data in table_data[0]]
+            column_index = columns_list.index(column_key)
+            return table_data[row_index][column_index][0]
 
 
-        # if os.path.exists('logging.conf'):
-        #
-        # else:
-        #     logging.config.fileConfig('app/logging.conf')
-
-        logging.getLogger('kafka').disabled = True
-        logging.getLogger('kafka.client').disabled = True
-        logging.getLogger('kafka.cluster').disabled = True
-        logging.getLogger('kafka.conn').disabled = True
-        logging.getLogger('kafka.consumer.fetcher').disabled = True
-        logging.getLogger('kafka.consumer.group').disabled = True
-        logging.getLogger('kafka.consumer.subscription_state').disabled = True
-        logging.getLogger('kafka.coordinator').disabled = True
-        logging.getLogger('kafka.coordinator.consumer').disabled = True
-        logging.getLogger('kafka.metrics.metrics').disabled = True
-        logging.getLogger('kafka.producer.kafka').disabled = True
-        logging.getLogger('kafka.producer.record_accumulator').disabled = True
-        logging.getLogger('kafka.producer.sender').disabled = True
-        logging.getLogger('matplotlib').disabled = True
-        logging.getLogger('matplotlib.font_manager').disabled = True
-        logging.getLogger('requests').disabled = True
-        logging.getLogger('urllib3.connectionpool').disabled = True
-        logging.getLogger('werkzeug').disabled = True
-
-        self.extra = {
-            'tenantID': None,
-            'traceID': None
-        }
-
-        self.set_ids(**kwargs)
-
-    def load_logging_conf(self, file_path):
-        logging.config.fileConfig(file_path)
-        logging.getLogger().setLevel(
-            self.log_levels[os.environ['LOG_LEVEL']])
-
-    def set_ids(self):
-        tenant_id = None
-        trace_id = None
-        line_no = None
-        file_name = None
+    def update_tables(self, updates,update_table_sources):
+        """Update the values in the database"""
+        logging.info(f"##### Received data to be updated: {updates}")
+       
+        logging.info(f"##### update table sources: {update_table_sources}")
         try:
-            # logging.debug('Setting tenant ID from zipkin...', extra=self.extra)
+            db_config['tenant_id'] = self.tenant_id
+            for table, colum_values in updates.items():
+                logging.info(f"table: {table}")
+                for data_base, inside_tables in update_table_sources.items():
+                    logging.info(f"data_base: {data_base}")
+                    logging.info(f"inside_tables: {inside_tables}")
+                    if table in inside_tables:
+                        db_connection = data_base
+                        logging.info(f"db_connection: {db_connection}")
+                        respective_table_db = DB(db_connection, **db_config)
+                        respective_table_db.update(table, update=colum_values, where={'case_id':self.case_id})
+                        break
 
-            # zipkin_attrs = get_default_tracer().get_zipkin_attrs()
-            zipkin_attrs = None
-            if zipkin_attrs:
-                tenant_id = zipkin_attrs.tenant_id
-                trace_id = zipkin_attrs.trace_id
+            return True
+        except Exception as e:
+            logging.error("Cannot update the database")
+            logging.error(e)
+            return False
+        
 
-        except:
-            message = 'Failed to get tenant and trace ID from zipkin header. Setting tenant/trace ID to None.'
-            print(message)
+    def get_data(self, param_object):
+        """Returns the parameter value.
 
-        try:
-            caller = getframeinfo(stack()[2][0])
-            file_name = caller.filename
-            line_no = caller.lineno
-        except:
-            message = 'Failed to get caller stack'
+        Args:
+            param_object(dict) The param dict from which we will parse and get the value.
+        Returns:
+            The value of the parameter
+        Note:
+            It returns a value of type we have defined. 
+            If the parameter is itself a rule then it evaluates the rule and returns the value.
+        """
+        logging.info(f"\nPARAM OBJECT IS {param_object}\n")
+        param_source = param_object['source']
+        if param_source == 'input_db':
+            database = param_object['database']
+            database = database.split('_')[1]
+            table_key = param_object['table']
+            column_key = param_object['column']
+            db_config['tenant_id']=self.tenant_id
+            db = DB(database, **db_config)
+            query = f"SELECT `{column_key}` from {table_key} where `case_id`='{self.case_id}'"
+            value = ""
+            try:
+                result_df = db.execute_(query)
+                if not result_df.empty:
+                    value=self.data_frame[table_key][column_key]
+                else:
+                    value = "UNIDENTIFIED VALUE"
+                
+            except Exception as e:
+                logging.error("cannot execute the query and get the value for the caseid.Please check the rule")
+                logging.error(e)
 
-        # logging.debug(f'Tenant ID: {tenant_id}', extra=self.extra)
-        # logging.debug(f'Trace ID: {trace_id}', extra=self.extra)
+            logging.info(f"###### Return Value from BR.GET_DATA: {value}")
+            return value
+        if param_source == 'input_config':
+            table_key = param_object['table']
+            column_key = param_object['column']
+            table_key = table_key.strip() # strip for extra spaces
+            column_key = column_key.strip() # strip for extra spaces
+            logging.debug(f"\ntable is {table_key} and column key is {column_key}\n")
+            try:
+                data = {}
+                # update params data
+                data['type'] = 'from_table'
+                data['table'] = table_key
+                data['column'] = column_key
+                data['value'] = self.data_source[table_key][column_key]
+                
+                return data['value']
+            except Exception as e:
+                logging.error("\ntable or column key not found\n")
+                logging.error(str(e))
+                logging.info(f"\ntable data is {self.data_source}\n")
+        if param_source == 'rule':
+            param_value = param_object['value']
+            return self.evaluate_rule(param_value)
+        if param_source == 'input':
+            param_value = param_object['value']
+            
+            return  param_value
+        if param_source == 'table':
+            table_key = param_object['table']
+            column_key = param_object['column']
+            row_index = self.index
+            try:
+                table_data = json.loads(self.tables[table_key])
+            except json.JSONDecodeError:
+               table_data = self.tables[table_key]
+            
+            columns_list = [col_data[0] for col_data in table_data[0]]
+            column_index = columns_list.index(column_key)
+            return table_data[row_index][column_index][0]
 
-        self.tenant_id = tenant_id
-        self.trace_id = trace_id
-        self.line_no = line_no
-        self.file_name = file_name
+        if param_source.lower()=='calculated':
+            return globals().get(param_object['value'],"")
 
-        self.extra = {
-            'tenantID': self.tenant_id,
-            'traceID': self.trace_id,
-            'fileName': self.file_name,
-            'lineNo': self.line_no
-        }
 
-    def basicConfig(self, *args, **kwargs):
-        logging.basicConfig(**kwargs)
 
-    def debug(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.debug(msg, extra=self.extra, *args, **kwargs)
 
-    def info(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.info(msg, extra=self.extra, *args, **kwargs)
-
-    def warning(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.warning(msg, extra=self.extra, *args, **kwargs)
-
-    def error(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.error(msg, extra=self.extra, *args, **kwargs)
-
-    def critical(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.critical(msg, extra=self.extra, *args, **kwargs)
-
-    def exception(self, msg, *args, **kwargs):
-        self.set_ids()
-        msg = sanitize_msg(msg)
-        logging.exception(msg, extra=self.extra, *args, **kwargs)
-
-    def getLogger(self, name=None):
-        return logging.getLogger(name=name)
-
-    def disable(self, level):
-        logging.disable(level)
